@@ -47,6 +47,7 @@ func (fa *FileAuth) String() string {
 	return string(bb.Bytes())
 }
 
+//新建文件夹时的默认权限
 func NormalFileAuth() FileAuth {
 	return FileAuth{OwnerAuth: ALLMode, GroupAuth: RWMode, OtherAuth: 0}
 }

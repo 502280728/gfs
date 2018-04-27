@@ -1,0 +1,38 @@
+1.系统文件与用户的基本权限与Linux基本一致，但是去除了用户组group的概念，基本操作命令也一样
+如rm,mkdir,chown,chmod,touch,ls,adduser	
+
+2.整个权限是被简化的， 系统可以有多个root用户，root用户拥有整个系统的所有权限（进行任何操作都不进行权限检查）。
+root用户可以新建root用户和其他的用户。系统启动时，有一个root用户。
+
+3.由一个master多个node组成
+node定时往master发送信息证明自己活着，同时也能证明master活着。
+master支持根目录配置，比如一个master的根是"/master1",另一个是"/master2"，以便将来可以将负载均衡到不同的master机器上
+
+存文件：
+	client访问master告知要新建一个文件，master告知client可以存到哪些节点上。client切分文件直接传到node上，传完就完成。
+	由node去告知master结果，当master收到所有node的结果时，才认为成功了，该文件才可见。
+	具体流程：
+		1.client告知master要新建一个文件并且告知新建文件的大小，master根据设置的block大小，计算出需要几个node，
+		同时根据replica的设置，选取一些作为备用，所以返回的信息是一个数组
+			[{blockid, nodeip, replica:[nodeip,nodeip...] }...]
+			blockid是block的计数器，用来描述每个block的顺序，nodeip是可以使用的node节点，replica中包含用来备份的节点。
+			
+		2. client收到master返回的数组之后，开始读取文件，并根据blockid，将对应的block发送到对应的node，在这之前，也会将
+		blockid对应的replica发送给node。如果一切正常，那么这个node会根据获得的replica将数据再发送给相应的node。
+		如果node挂了，那么client就在replica中选一个node，再次发送。如果所有的replica中的node都挂了，报错
+		
+		3. node节点（无论是主node，还是replica node ）存储完毕之后，通知master刚刚获得的数据，master收集完所有的blockid
+		之后，才认为文件传输成功，该文件才可见。
+
+取文件：
+	client访问master告知要取一个文件，master查看自己的文件系统，将所有的node都发送给client，信息格式还是
+		[{blockid, nodeip, replica:[nodeip,nodeip...] }...]
+	client按照blockid的顺序到各个node去取文件，如果中途node挂了，就到replica中去取，直到最后所有的blockid对应的block都
+	取到了。
+	
+4.单点故障在future.txt实现
+
+
+
+5. 设计上，整个文件系统是以用户（user）为中心的，是用户在操作文件系统，而不是文件系统在操作自己，所以，像新建文件、删除文件等等操作
+都是属于User类

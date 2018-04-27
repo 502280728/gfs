@@ -1,0 +1,25 @@
+1. 当前，存在单点故障，解决方法
+
+master端
+首先，启动多个mater，使用Paxos算法选举一个leader，
+随从master定时从主master获得整个文件系统的信息，并定时监测主master健康状态，
+如果住master挂了，选举出一个新的master。其他的都是随从了。
+
+一开始启动系统时，要配置master之间都互相知道，在启动之后，如果要新加master，只要让新加的机器通知随便一个master就可以了，这个master
+会通知其他的机器有新的机器加入。
+
+
+
+node端
+node定时往master发送信息，证明自己活着，同时也证明master活着，同时也从master端获得所有master机器组的信息。
+node如果发现主master挂了，就从以前获得的master机器组中随机选一个询问谁是master，如果master还在选举，就等一会儿在问。
+如果选好了，以后就往这个master发送信息。
+
+
+2. 实现MapReduce
+这里没有YARN之类的资源管理器
+先仅支持结果保存到GFS上再说吧。
+客户端将GO编译好之后，将可执行程序发送到master，由master将程序分发到各个node，node节点互相协作完成任务后，通知master，master再
+通知客户端。
+
+3.能够将该文件系统mount到本地
