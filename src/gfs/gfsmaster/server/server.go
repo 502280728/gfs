@@ -25,7 +25,7 @@ func Cmd() *cobra.Command {
 }
 
 func initFileSystem() {
-	fs.RootStorePath = "D:/temp/fs1.binary"
+	fs.RootStorePath = "D:/temp/fs.binary"
 	fs.RecoverFromStore()
 }
 
@@ -41,10 +41,15 @@ func createServer() {
 
 func createHandler() Handler {
 	handler := Handler(func(w http.ResponseWriter, req *http.Request) {
-		uri, _ := url.Parse(req.RequestURI)
-		if strings.HasPrefix(uri.Path, "/fs") {
-			userName := uri.Query().Get("user")
-			fs.CreateHandler(uri.Path, &user.User{Name: userName}, parseBody(req.Body))
+		if req.Method == "POST" {
+			uri, _ := url.Parse(req.RequestURI)
+			if strings.HasPrefix(uri.Path, "/fs") {
+				userName := uri.Query().Get("user")
+				bb := fs.CreateHandler(uri.Path, &user.User{Name: userName}, parseBody(req.Body))
+				w.Write(bb)
+			}
+		} else {
+			w.Write([]byte("仅支持POST请求"))
 		}
 
 	})

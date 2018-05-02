@@ -4,6 +4,6 @@ import ()
 
 type MessageInFS struct {
 	Success bool
-	date    string
+	Data    string
 	Msg     string
 }

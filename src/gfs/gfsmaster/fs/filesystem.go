@@ -157,7 +157,7 @@ func (fn *FileName) MakeDir(user *user.User) (bool, *Node, error) {
 	if name, err := fn.check(); err == nil {
 		names := strings.Split(name, "/")
 		if index, node := findNotExists(names); index == -1 {
-			return false, node, nil //已经存在的不检查权限
+			return false, node, errors.New("文件夹已经存在") //已经存在的不检查权限
 		} else {
 			if check(node, user, WEMode) {
 				begin, end := createNode(node.NodeFile.Name, names[index:], user)
@@ -176,7 +176,7 @@ func (fn *FileName) Touch(user *user.User) (bool, *Node, error) {
 	nn := string(*fn)
 	parentDir := FileName(string([]byte(nn)[0:strings.LastIndex(nn, "/")]))
 	simpleName := string([]byte(nn)[strings.LastIndex(nn, "/")+1:])
-	if _, node, err := parentDir.MakeDir(user); err == nil {
+	if _, node, err := parentDir.MakeDir(user); node != nil {
 		if node.NodeFile.IsDir {
 			if check(node, user, WriteMode) {
 				newFile := &File{Name: string(*fn), IsDir: false, Mode: NormalFileAuth(), Owner: *user, CreateTime: time.Now()}

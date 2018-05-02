@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gfs/gfsclient/fs"
 	"github.com/spf13/cobra"
 )
 
@@ -17,5 +18,6 @@ var mainCmd = &cobra.Command{
 // gfsclient fs chown -r root /ab/c/d
 
 func main() {
+	mainCmd.AddCommand(fs.Cmd())
 	mainCmd.Execute()
 }
