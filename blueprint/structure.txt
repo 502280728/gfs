@@ -5,8 +5,10 @@
 root用户可以新建root用户和其他的用户。系统启动时，有一个root用户。
 
 3.由一个master多个node组成
-node定时往master发送信息证明自己活着，同时也能证明master活着。
-master支持根目录配置，比如一个master的根是"/master1",另一个是"/master2"，以便将来可以将负载均衡到不同的master机器上
+	node定时往master发送信息证明自己活着，同时也能证明master活着。
+		master支持根目录配置，比如一个master的根是"/master1",另一个是"/master2"，以便将来可以将负载均衡到不同的master机器上
+	上面发送的信息会包含：node节点刚刚完成存储的文件块信息（由request body传输,格式是[文件名:blockid,...]）;node节点自己的advise地址(由request header: AdviseAddress传输)
+
 
 存文件：
 	client访问master告知要新建一个文件，master告知client可以存到哪些节点上。client切分文件直接传到node上，传完就完成。

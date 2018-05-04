@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"gfs/common"
+	"golang.org/x/net/http2"
 	"gopkg.in/yaml.v2"
 	"log"
 )
@@ -13,7 +14,8 @@ node:
   blocksize: 24M
   infointerval: 10
   masters: ["localhost:9091","localhost:9092"]
-  port: 8078
+  advisehost: 8078
+  adviseport: 8078
 
 master: 
   defaultfs: localhost:9091
@@ -30,4 +32,6 @@ func main() {
 		log.Fatalf("error: %v", err)
 	}
 	fmt.Printf("--- t dump:\n%s\n\n", string(d))
+	http2.VerboseLogs = true
+	http2.ConfigureServer
 }

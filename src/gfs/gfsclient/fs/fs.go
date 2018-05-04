@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -42,7 +43,11 @@ func startFsCli(master string, user string) {
 			os.Exit(0)
 		}
 		ss := strings.Split(line, " ")
-		sentCommand(ss[0], ss[1])
+		if ss[0] != "load" {
+			sentCommand(ss[0], ss[1])
+		} else {
+
+		}
 		fmt.Print(fullPrint)
 	}
 	if err := scanner.Err(); err != nil {
@@ -66,4 +71,41 @@ func sentCommand(cmdLine string, path string) {
 	} else {
 		fmt.Println(msg.Msg)
 	}
+}
+func sentCommand1(cmdLine string, targetfile string, sourcefile string) {
+	var length int64
+	if fs, err := os.Stat(sourcefile); err == nil {
+		length = fs.Size()
+	}
+	var blocks int
+	if length%common.BlockSize == 0 {
+		blocks = int(length / common.BlockSize)
+	} else {
+		blocks = int(length/common.BlockSize) + 1
+	}
+
+	var bb bytes.Buffer
+	bb.WriteString(path)
+	var data url.Values
+	data.Set("filename", targetfile)
+	data.Set("blocks", strconv.Itoa(blocks))
+	resp, err := http.PostForm("http://localhost:8081/cli/load", data)
+	if err != nil {
+		logger.Info("error occurs")
+	}
+	defer resp.Body.Close()
+	var msg common.MasterToClientMessage
+	dec := gob.NewDecoder(resp.Body)
+	dec.Decode(&msg)
+
+	var bb bytes.Buffer
+	file, _ := os.Open(sourcefile)
+	for i := 0; i < blocks; i++ {
+		var kk = make([]byte, 0, common.BlockSize)
+		file.Read(kk)
+		bb.Write(bb)
+		http.Post(msg.Nodes[0]+"/data", "application/octet-stream", &bb)
+		bb.Reset()
+	}
+
 }

@@ -1,0 +1,42 @@
+@startuml
+participant "client" as A
+participant "masternode" as B
+participant "datanode1" as C
+participant "datanode2" as D
+
+A->B:请求写入某个文件
+activate B
+note left of B
+ 随机选择一些
+ datanode作为
+ 主要节点和备
+ 份节点
+end note
+B->A:传回datanode地址
+deactivate B
+activate A
+note left of A
+ client会将文件
+ 分成固定大小传
+ 输
+end note
+A->C:发送相应的数据段到目标datanode
+C->A: 返回ACK
+
+A->D:发送相应的数据段到目标datanode
+D->A: 返回ACK
+deactivate A
+C<->D:根据备份设置发送备份
+C->B:报告接收的文件情况
+activate B
+note left of B
+ 收集文件信息，
+ 直到收到一个文件
+ 所有block的信息，
+ 才将该文件置为可
+ 见
+end note
+D->B:报告接收的文件情况
+
+deactivate B
+@enduml

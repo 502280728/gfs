@@ -7,7 +7,7 @@ import (
 	"gfs/gfsmaster/fs/user"
 )
 
-func CreateHandler(path string, u *user.User, body string) []byte {
+func Handle(path string, u *user.User, body string) []byte {
 	fn := FileName(body)
 	result := common.MessageInFS{}
 	switch path {
@@ -35,7 +35,12 @@ func CreateHandler(path string, u *user.User, body string) []byte {
 			result.Success = false
 			result.Msg = err.Error()
 		}
+	case "/fs/rm":
+	case "/fs/chmod":
+	case "/fs/chown":
+	case "/fs/adduser":
 	}
+
 	var bb1 bytes.Buffer
 	enc := gob.NewEncoder(&bb1)
 	enc.Encode(result)
