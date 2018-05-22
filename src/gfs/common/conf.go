@@ -1,7 +1,6 @@
 package common
 
 import (
-	"errors"
 	logging "github.com/op/go-logging"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -32,7 +31,8 @@ type Conf struct {
 }
 
 func GetConf(file string) (*Conf, error) {
-	if res, err := ioutil.ReadFile(filename); err == nil {
+
+	if res, err := ioutil.ReadFile(file); err == nil {
 		var conf = &Conf{}
 		err := yaml.Unmarshal([]byte(res), conf)
 		if err != nil {

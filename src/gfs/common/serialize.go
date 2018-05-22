@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"encoding/gob"
+	"io"
 )
 
 type MessageInFS struct {
@@ -38,15 +39,53 @@ type FileBlockChip struct {
 }
 
 func (fbc *FileBlockChip) Encode() *bytes.Buffer {
-	var res *bytes.Buffer
-	enc := gob.NewEncoder(res)
-	enc.Encode(*fbc)
-	return res
+	var res bytes.Buffer
+	enc := gob.NewEncoder(&res)
+	enc.Encode(fbc)
+	return &res
 }
 
 func (fbc *FileBlockChip) Decode(bb []byte) {
 	var buf bytes.Buffer
 	buf.Write(bb)
-	dec := gob.NewDecoder(buf)
+	dec := gob.NewDecoder(&buf)
 	dec.Decode(fbc)
+}
+
+//传对象
+func EncodeToBytes(obj interface{}) []byte {
+	return EncodeToByteBuffer(obj).Bytes()
+}
+
+//传对象
+func EncodeToByteBuffer(obj interface{}) *bytes.Buffer {
+	var res bytes.Buffer
+	EncodeToWriter(obj, &res)
+	return &res
+}
+
+func EncodeToWriter(obj interface{}, writer io.Writer) {
+	enc := gob.NewEncoder(writer)
+	enc.Encode(obj)
+	return &res
+}
+
+//obj 必须是地址
+func DecodeFromBytes(obj interface{}, bb []byte) {
+	var buf bytes.Buffer
+	buf.Write(bb)
+	DecodeFromByteBuffer(obj, &buf)
+}
+
+// obj必须是地址
+func DecodeFromByteBuffer(obj interface{}, bb *bytes.Buffer) {
+	DecodeFromReader(obj, bb)
+}
+
+// obj必须是地址
+func DecodeFromReader(obj interface{}, reader io.Reader) {
+	var buf bytes.Buffer
+	buf.Write(bb)
+	dec := gob.NewDecoder(reader)
+	dec.Decode(obj)
 }

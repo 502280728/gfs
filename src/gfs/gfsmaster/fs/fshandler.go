@@ -40,9 +40,5 @@ func Handle(path string, u *user.User, body string) []byte {
 	case "/fs/chown":
 	case "/fs/adduser":
 	}
-
-	var bb1 bytes.Buffer
-	enc := gob.NewEncoder(&bb1)
-	enc.Encode(result)
-	return bb1.Bytes()
+	return common.EncodeToBytes(result)
 }

@@ -2,6 +2,7 @@ package server
 
 //该package主要负责接收URL请求，并分发到相应的处理器，可以认为是MVC中的C
 import (
+	"gfs/common"
 	"gfs/gfsmaster/fs"
 	"gfs/gfsmaster/fs/user"
 	"gfs/gfsmaster/node"
@@ -20,11 +21,19 @@ func Cmd() *cobra.Command {
 		Use: "start",
 		Run: func(cmd *cobra.Command, args []string) {
 			initFileSystem()
-			createFSServer()
+			svr := Server
+			svr.start()
 		},
 	}
 	cmd.Flags().StringVarP(&conf, "conf", "c", "", "配置文件位置")
 	return cmd
+}
+
+type Server common.Conf
+
+func (svr *Server) start() {
+	http.ListenAndServe(":8080", createFSHandler())
+	http.ListenAndServe(":8081", createListener())
 }
 
 //初始化整个Filesystem
@@ -33,25 +42,10 @@ func initFileSystem() {
 	fs.RecoverFromStore()
 }
 
-type Handler func(http.ResponseWriter, *http.Request)
-
-func (handler Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	handler(w, req)
-}
-
-//开启服务器，监听来自client端的关于filesystem的请求
-//这些请求包含了 rm,touch,mkdir,chmod,chown,mv,ll,ls等等修改文件系统文件树的请求，
-//也包含了load这个将本地文件加载到gfs中的请求
-func createFSServer() {
-	http.ListenAndServe(":8080", createFSHandler())
-	http.ListenAndServe(":8081", createListener())
-}
-
 //该handler用来处理node节点定时发送的ping信息
-
-func createListener() Handler {
+func createListener() common.Handler {
 	node.DoSomework()
-	handler := Handler(func(w http.ResponseWriter, req *http.Request) {
+	handler := common.Handler(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method == "POST" {
 			uri, _ := url.Parse(req.RequestURI)
 			if strings.HasPrefix(uri.Path, "/node") {
@@ -71,9 +65,12 @@ func createListener() Handler {
 	return handler
 }
 
+//开启服务器，监听来自client端的关于filesystem的请求
+//这些请求包含了 rm,touch,mkdir,chmod,chown,mv,ll,ls等等修改文件系统文件树的请求，
+//也包含了load这个将本地文件加载到gfs中的请求
 //该handler专门用来处理关于fs文件树的操作
-func createFSHandler() Handler {
-	handler := Handler(func(w http.ResponseWriter, req *http.Request) {
+func createFSHandler() common.Handler {
+	handler := common.Handler(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method == "POST" {
 			uri, _ := url.Parse(req.RequestURI)
 			if strings.HasPrefix(uri.Path, "/fs") {

@@ -20,6 +20,7 @@ var logger = logging.MustGetLogger("gfs/gfsclient/fs")
 func Cmd() *cobra.Command {
 	var master string
 	var user string
+	var pass string
 	var cmd = &cobra.Command{
 		Use: "login",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -29,6 +30,7 @@ func Cmd() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&master, "master", "m", "", "master的位置")
 	cmd.Flags().StringVarP(&user, "user", "u", "", "用户名")
+	cmd.Flags().StringVarP(&pass, "pass", "p", "", "密码")
 	return cmd
 }
 
@@ -64,8 +66,7 @@ func sentCommand(cmdLine string, path string) {
 	}
 	defer resp.Body.Close()
 	var msg common.MessageInFS
-	dec := gob.NewDecoder(resp.Body)
-	dec.Decode(&msg)
+	common.DecodeFromReader(&msg, resp.Body)
 	if msg.Success {
 		fmt.Println(msg.Data)
 	} else {
@@ -95,9 +96,7 @@ func sentCommand1(cmdLine string, targetfile string, sourcefile string) {
 	}
 	defer resp.Body.Close()
 	var msg common.MasterToClientMessage
-	dec := gob.NewDecoder(resp.Body)
-	dec.Decode(&msg)
-
+	common.DecodeFromReader(&msg, resp.Body)
 	var bb bytes.Buffer
 	file, _ := os.Open(sourcefile)
 	for i := 0; i < blocks; i++ {
