@@ -3,19 +3,27 @@ package fs
 import (
 	"bufio"
 	"bytes"
-	"encoding/gob"
 	"fmt"
 	"gfs/common"
-	logging "github.com/op/go-logging"
-	"github.com/spf13/cobra"
+	http1 "gfs/common/http"
+	"gfs/common/http/cookie"
+	"gfs/gfsclient/cmd"
 	"net/http"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
+
+	logging "github.com/op/go-logging"
+	"github.com/spf13/cobra"
 )
 
 var logger = logging.MustGetLogger("gfs/gfsclient/fs")
+var CS = &cookie.GFSCookieStore{[]*http.Cookie{}}
+var REQ = http1.GFSRequest{}
+
+func init() {
+	REQ.SetCookieStore(CS)
+}
 
 func Cmd() *cobra.Command {
 	var master string
@@ -34,6 +42,31 @@ func Cmd() *cobra.Command {
 	return cmd
 }
 
+func login(master string, user string, pass string) bool {
+	uu := map[string]string{"name": user, "pass": pass}
+	var msg common.MessageInFS
+	err := REQ.PostObj(master+"/fs/login", uu, &msg)
+	if err == nil {
+		if msg.Success {
+			logger.Info(msg.Data)
+			return true
+		} else {
+			panic(msg.Msg)
+		}
+	} else {
+		panic(err.Error())
+	}
+}
+
+//  cd /d
+//  ls
+//  ls /
+//  mkdir -p /a/b/c
+//  rm -rf /a
+//  touch /a.txt
+//  mv /a/b /c/d
+//  chmod u+a /ab/c/d
+//  chown -r root /ab/c/d
 func startFsCli(master string, user string) {
 	uri, _ := url.Parse(master)
 	fullPrint := fmt.Sprintf("[%s@%s] > ", user, uri.Host)
@@ -46,7 +79,8 @@ func startFsCli(master string, user string) {
 		}
 		ss := strings.Split(line, " ")
 		if ss[0] != "load" {
-			sentCommand(ss[0], ss[1])
+			cmd.MainCmd.ExecuteString(ss)
+			//sentCommand(ss[0], ss[1])
 		} else {
 
 		}
@@ -74,37 +108,13 @@ func sentCommand(cmdLine string, path string) {
 	}
 }
 func sentCommand1(cmdLine string, targetfile string, sourcefile string) {
-	var length int64
-	if fs, err := os.Stat(sourcefile); err == nil {
-		length = fs.Size()
-	}
-	var blocks int
-	if length%common.BlockSize == 0 {
-		blocks = int(length / common.BlockSize)
-	} else {
-		blocks = int(length/common.BlockSize) + 1
-	}
-
-	var bb bytes.Buffer
-	bb.WriteString(path)
-	var data url.Values
-	data.Set("filename", targetfile)
-	data.Set("blocks", strconv.Itoa(blocks))
-	resp, err := http.PostForm("http://localhost:8081/cli/load", data)
-	if err != nil {
-		logger.Info("error occurs")
-	}
-	defer resp.Body.Close()
-	var msg common.MasterToClientMessage
-	common.DecodeFromReader(&msg, resp.Body)
-	var bb bytes.Buffer
-	file, _ := os.Open(sourcefile)
-	for i := 0; i < blocks; i++ {
-		var kk = make([]byte, 0, common.BlockSize)
-		file.Read(kk)
-		bb.Write(bb)
-		http.Post(msg.Nodes[0]+"/data", "application/octet-stream", &bb)
-		bb.Reset()
-	}
-
+	//	var length int64
+	//	if fs, err := os.Stat(sourcefile); err == nil {
+	//		length = fs.Size()
+	//	}
+	//	if length%common.BlockSize == 0 {
+	//		blocks = int(length / common.BlockSize)
+	//	} else {
+	//		blocks = int(length/common.BlockSize) + 1
+	//	}
 }

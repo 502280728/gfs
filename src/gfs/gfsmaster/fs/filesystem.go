@@ -21,7 +21,7 @@ type File struct {
 	Owner      user.User //所有者
 	Mode       FileAuth  //权限
 	CreateTime time.Time // 创建时间
-	IsDir      bool      //是否是
+	IsDir      bool      //是否是文件夹
 	Unvisiable bool      //是否可见
 	Paths      []string  //在物理节点上的存储位置，格式是 [ip:port;id,........]
 }
@@ -128,7 +128,7 @@ func check(node *Node, user *user.User, mode FileMode) bool {
 func (fn *FileName) List(user *user.User) ([]*File, error) {
 	if name, err := fn.check(); err == nil {
 		names := strings.Split(name, "/")
-		if index, node := findNotExists(names); index == -1 {
+		if index, node, _ := findNotExists(names); index == -1 {
 			if check(node, user, ReadMode) {
 				var result []*File
 				for _, nod := range node.Nodes {
@@ -156,7 +156,7 @@ func (fn *FileName) List(user *user.User) ([]*File, error) {
 func (fn *FileName) MakeDir(user *user.User) (bool, *Node, error) {
 	if name, err := fn.check(); err == nil {
 		names := strings.Split(name, "/")
-		if index, node := findNotExists(names); index == -1 {
+		if index, node, _ := findNotExists(names); index == -1 {
 			return false, node, errors.New("文件夹已经存在") //已经存在的不检查权限
 		} else {
 			if check(node, user, WEMode) {
@@ -196,6 +196,25 @@ func (fn *FileName) Touch(user *user.User) (bool, *Node, error) {
 }
 
 func (fn *FileName) Remove(user *user.User) (bool, error) {
+	logger.Infof("removing file %s", string(*fn))
+	if name, err := fn.check(); err == nil {
+		names := strings.Split(name, "/")
+		if index, node, pnode := findNotExists(names); index == -1 {
+			logger.Infof("find the file in %d,%s,%s", index, node.Name, pnode.Name)
+			var tmp int
+			for i, n := range pnode.Nodes {
+				if n.Name == node.Name {
+					tmp = i
+					break
+				}
+			}
+			pnode.Nodes = append(pnode.Nodes[:tmp], pnode.Nodes[tmp+1:]...)
+		} else {
+			logger.Infof("file %s does not exist")
+			return false, fmt.Errorf("文件%s不存在", name)
+		}
+	}
+
 	return false, nil
 }
 
@@ -214,21 +233,26 @@ func createNode(parentDir string, names []string, user *user.User) (*Node, *Node
 	return nodes[0], nodes[len(nodes)-1]
 }
 
-//根据文件名在文件树中寻找最后一个不存在的文件夹，如果都存在，则返回最后一个文件夹所在的节点
-func findNotExists(names []string) (int, *Node) {
+//根据文件名在文件树中寻找最后一个不存在的文件夹，如果都存在，则返回最后一个文件夹所在的节点和父节点
+func findNotExists(names []string) (int, *Node, *Node) {
 	var resNode *Node = &Root
 	find := false
 	var tmp *Node
+	var parent *Node
 	for index, _ := range names {
+		if index == len(names)-1 {
+			break
+		}
+		parent = resNode
 		if index < len(names)-1 {
 			if find, tmp = findExistsNode(names[index+1], resNode.Nodes); !find {
-				return index + 1, resNode
+				return index + 1, resNode, resNode
 			} else {
 				resNode = tmp
 			}
 		}
 	}
-	return -1, resNode
+	return -1, resNode, parent
 }
 
 func findExistsNode(name string, nodes []*Node) (bool, *Node) {

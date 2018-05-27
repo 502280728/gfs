@@ -33,13 +33,13 @@ type File struct {
 var channel = make(chan File)
 
 func DoSomework() {
-	go func(chan []File) {
+	go func(chan File) {
 		tmp := <-channel
 		if FileLocation[tmp.name] != nil {
 			if len(FileLocation[tmp.name][tmp.blockid]) != 0 {
-				FileLocation[tmp.name][tmp.blockid] = FileLocation[tmp.name][tmp.blockid] + ";" + adviseaddress
+				//FileLocation[tmp.name][tmp.blockid] = FileLocation[tmp.name][tmp.blockid] + ";" + adviseaddress
 			} else {
-				FileLocation[tmp.name][tmp.blockid] = adviseaddress
+				//FileLocation[tmp.name][tmp.blockid] = adviseaddress
 			}
 		}
 	}(channel)
@@ -49,7 +49,9 @@ func HandleNodeRequest(adviseAddress string, bb []byte) []byte {
 	logger.Infof("receive info from %s", adviseAddress)
 	DataNodeCache[adviseAddress] = time.Now()
 	var dnim common.DataNodeIntervalMessage
-	dec := gob.NewDecoder(bb)
+	var buffer bytes.Buffer
+	buffer.Write(bb)
+	dec := gob.NewDecoder(&buffer)
 	dec.Decode(&dnim)
 	files := dnim.Files
 	for _, file := range files {
@@ -59,7 +61,7 @@ func HandleNodeRequest(adviseAddress string, bb []byte) []byte {
 	}
 	var res bytes.Buffer
 	rs := common.ACK(true)
-	enc := gob.NewEncoder(res)
+	enc := gob.NewEncoder(&res)
 	enc.Encode(rs)
 	return res.Bytes()
 }
@@ -75,16 +77,16 @@ func HandleClientRequest(filename string, blocks int, u *user.User) []byte {
 			tmp = append(tmp, k)
 		}
 	}
-	for i := 0; i < blocksize; i++ {
+	for i := 0; i < blocks; i++ {
 		var tmpstr = make([]string, 3, 3)
 		for j := 0; j < 3; j++ {
 			tmpstr[j] = tmp[rand.Intn(len(tmp))]
 		}
 		mtcm.Nodes = append(mtcm.Nodes, strings.Join(tmpstr, ";"))
 	}
-	FileLocation[filename] = make([]string, blocksize, blocksize)
+	FileLocation[filename] = make([]string, blocks, blocks)
 	var res bytes.Buffer
-	enc := gob.NewEncoder(mtcm)
-	enc.Encode(rs)
+	enc := gob.NewEncoder(&res)
+	enc.Encode(mtcm)
 	return res.Bytes()
 }

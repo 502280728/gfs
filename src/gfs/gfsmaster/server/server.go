@@ -3,17 +3,28 @@ package server
 //该package主要负责接收URL请求，并分发到相应的处理器，可以认为是MVC中的C
 import (
 	"gfs/common"
+	"gfs/common/http/session"
 	"gfs/gfsmaster/fs"
 	"gfs/gfsmaster/fs/user"
 	"gfs/gfsmaster/node"
-	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+
+	logging "github.com/op/go-logging"
+	"github.com/spf13/cobra"
 )
+
+var sm *session.Manager
+var logger = logging.MustGetLogger("gfs/gfsmaster/server")
+
+func init() {
+	sm = session.NewProvider(session.MAP_SESSION_PROVIDER, "")
+	sm.SessionGC()
+}
 
 func Cmd() *cobra.Command {
 	var conf string
@@ -21,7 +32,7 @@ func Cmd() *cobra.Command {
 		Use: "start",
 		Run: func(cmd *cobra.Command, args []string) {
 			initFileSystem()
-			svr := Server
+			svr := Server{}
 			svr.start()
 		},
 	}
@@ -32,8 +43,20 @@ func Cmd() *cobra.Command {
 type Server common.Conf
 
 func (svr *Server) start() {
-	http.ListenAndServe(":8080", createFSHandler())
-	http.ListenAndServe(":8081", createListener())
+	//http.ListenAndServe(":8080", createFSHandler())
+	//http.ListenAndServe(":8081", createListener())
+	http.ListenAndServe(":8082", createTestListener())
+}
+
+func createTestListener() common.Handler {
+	handler := common.Handler(func(w http.ResponseWriter, req *http.Request) {
+		sess, _ := sm.SessionStart(w, req)
+		logger.Infof("wowo %s", sess.Get("cc"))
+		sess.Set("cc", "bb")
+		logger.Info("a request")
+		w.Write([]byte("a test"))
+	})
+	return handler
 }
 
 //初始化整个Filesystem
@@ -50,7 +73,7 @@ func createListener() common.Handler {
 			uri, _ := url.Parse(req.RequestURI)
 			if strings.HasPrefix(uri.Path, "/node") {
 				aa := req.Header.Get("AdviseAddress")
-				bb, _ = ioutil.ReadAll(req.Body)
+				bb, _ := ioutil.ReadAll(req.Body)
 				res := node.HandleNodeRequest(aa, bb)
 				w.Write(res)
 			} else if strings.HasPrefix(uri.Path, "/cli/load") {
@@ -83,7 +106,6 @@ func createFSHandler() common.Handler {
 		} else {
 			w.Write([]byte("仅支持POST请求"))
 		}
-
 	})
 	return handler
 }

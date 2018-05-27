@@ -2,7 +2,6 @@ package fs
 
 import (
 	"bytes"
-	"encoding/gob"
 	"gfs/common"
 	"gfs/gfsmaster/fs/user"
 )
@@ -11,6 +10,7 @@ func Handle(path string, u *user.User, body string) []byte {
 	fn := FileName(body)
 	result := common.MessageInFS{}
 	switch path {
+
 	case "/fs/mkdir":
 		succ, _, err := fn.MakeDir(u)
 		result.Success = succ
@@ -36,6 +36,13 @@ func Handle(path string, u *user.User, body string) []byte {
 			result.Msg = err.Error()
 		}
 	case "/fs/rm":
+		if _, err := fn.Remove(u); err == nil {
+			result.Success = true
+			result.Data = ""
+		} else {
+			result.Success = false
+			result.Msg = err.Error()
+		}
 	case "/fs/chmod":
 	case "/fs/chown":
 	case "/fs/adduser":

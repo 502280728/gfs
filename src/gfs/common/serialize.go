@@ -4,7 +4,12 @@ import (
 	"bytes"
 	"encoding/gob"
 	"io"
+	"reflect"
 )
+
+func init() {
+	gob.Register(map[string]string{})
+}
 
 type MessageInFS struct {
 	Success bool
@@ -67,7 +72,6 @@ func EncodeToByteBuffer(obj interface{}) *bytes.Buffer {
 func EncodeToWriter(obj interface{}, writer io.Writer) {
 	enc := gob.NewEncoder(writer)
 	enc.Encode(obj)
-	return &res
 }
 
 //obj 必须是地址
@@ -84,8 +88,10 @@ func DecodeFromByteBuffer(obj interface{}, bb *bytes.Buffer) {
 
 // obj必须是地址
 func DecodeFromReader(obj interface{}, reader io.Reader) {
-	var buf bytes.Buffer
-	buf.Write(bb)
 	dec := gob.NewDecoder(reader)
-	dec.Decode(obj)
+	if value, ok := obj.(reflect.Value); ok {
+		dec.DecodeValue(value)
+	} else {
+		dec.Decode(obj)
+	}
 }

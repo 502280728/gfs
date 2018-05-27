@@ -101,7 +101,7 @@ func (gfs *GFSReader) Read(p []byte) (n int, err error) {
 		//TODO 联系master获得所有的datanode
 	}
 	if cap(p) < MaxRead {
-		return 0, fmt.Errorf("the cap of byte slice is smaller than %s,use a bigger one", MaxRead)
+		return 0, fmt.Errorf("the cap of byte slice is smaller than %d,use a bigger one", MaxRead)
 	}
 	targetIndex := int(gfs.location / BlockSize)
 	if targetIndex == len(gfs.TargetNode) {
