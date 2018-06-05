@@ -2,6 +2,7 @@ package common
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -11,10 +12,8 @@ type Person struct {
 }
 
 func Test(t *testing.T) {
-	p := map[string]string{"a": "b"}
-	bb := EncodeToByteBuffer(p)
-	fmt.Println("decode")
-	pppp := map[string]string{}
-	DecodeFromByteBuffer(&pppp, bb)
-	fmt.Println(pppp)
+	p := &Person{}
+	pv := reflect.ValueOf(p).Elem()
+	pv.FieldByName("Name").Set(reflect.ValueOf("mike"))
+	fmt.Println(p)
 }

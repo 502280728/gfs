@@ -19,7 +19,7 @@ func HH(p Person) Person {
 func Test1(t *testing.T) {
 	person := Person{"Mike", 12}
 	bb := common.EncodeToByteBuffer(person)
-	tt := handle(HH, bb)
+	tt := handle(HH, bb, GO)
 
 	cc := common.EncodeToByteBuffer(tt)
 	pp := &Person{}
