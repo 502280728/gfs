@@ -8,12 +8,14 @@ import (
 	"io"
 	"net/http"
 	"reflect"
+	"strconv"
 )
 
 type Coder interface {
-	Decode(obj interface{}, reader io.Reader)
+	Decode(obj interface{}, reader io.Reader) //仅接收指针或者指针的reflect.Value
 	Encode(obj interface{}) *bytes.Buffer
 	IsReflectValueSupported() bool //该方法没有任何作用，仅是提醒上面的Decode和Encode，特别是Decode必须要能够支持reflect.Value类型的参数
+	DecodeRequest(obj interface{}, req *http.Request)
 }
 
 // 目前仅支持gob
@@ -34,12 +36,37 @@ func (dc *GobCoder) Decode(obj interface{}, reader io.Reader) {
 	}
 }
 
+func (dc *GobCoder) DecodeRequest(obj interface{}, req *http.Request) {
+	req.ParseForm()
+	var val reflect.Value
+	if value, ok := obj.(reflect.Value); ok {
+		val = value
+	} else {
+		val = reflect.ValueOf(obj).Elem()
+	}
+
+	var field reflect.Value
+	for k, v := range req.Form {
+		field = val.FieldByName(k)
+		switch field.Kind() {
+		case reflect.Int:
+			tmp, _ := strconv.Atoi(v[0])
+			field.SetInt(int64(tmp))
+		case reflect.String:
+			field.SetString(v[0])
+		case reflect.Slice:
+		default:
+		}
+	}
+}
+
 func (dc *GobCoder) Encode(obj interface{}) *bytes.Buffer {
 	var writer bytes.Buffer
 	enc := gob.NewEncoder(&writer)
 	enc.Encode(obj)
 	return &writer
 }
+
 func (dc *GobCoder) IsReflectValueSupported() bool {
 	return true
 }

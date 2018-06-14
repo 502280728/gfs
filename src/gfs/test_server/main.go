@@ -13,6 +13,7 @@ import (
 type A struct {
 	Name string
 	Age  int
+	MM   []string
 }
 
 type B struct {
@@ -26,20 +27,30 @@ func main() {
 
 	var hh = common.Handler(func(w http.ResponseWriter, req *http.Request) {
 		req.ParseForm()
-
 		val := reflect.New(reflect.TypeOf(A{})).Elem()
-
+		var field reflect.Value
 		for k, v := range req.Form {
-			switch val.FieldByName(k).Kind() {
+			field = val.FieldByName(k)
+			switch field.Kind() {
 			case reflect.Int:
 				tmp, _ := strconv.Atoi(v[0])
-				val.FieldByName(k).SetInt(int64(tmp))
+				field.SetInt(int64(tmp))
 			case reflect.String:
-				val.FieldByName(k).SetString(v[0])
-
+				field.SetString(v[0])
+			case reflect.Slice:
+				kk := reflect.New(field.Type()).Elem()
+				value := make([]reflect.Value, len(v))
+				for index, tmpv := range v {
+					value[index] = reflect.ValueOf(tmpv)
+				}
+				kk = reflect.Append(kk, value...)
+				field.Set(kk)
+			default:
 			}
 		}
 		fmt.Println(val.Interface())
+		bb := http1.JSON_CODER.Encode(val.Interface())
+		w.Write(bb.Bytes())
 	})
 
 	http.ListenAndServe(":8080", hh)
