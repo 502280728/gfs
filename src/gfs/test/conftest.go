@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"gfs/common/http"
 	"reflect"
 )
 
@@ -16,9 +15,9 @@ func (a A) String() string {
 }
 
 func hello(a A) {
-	fmt.Println(a.Name)
+
 }
 
 func main() {
-
+	fmt.Println(reflect.Value{} != reflect.Value{})
 }

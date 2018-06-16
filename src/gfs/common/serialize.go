@@ -62,7 +62,7 @@ func EncodeToBytes(obj interface{}) []byte {
 	return EncodeToByteBuffer(obj).Bytes()
 }
 
-//传对象
+//传对象,使用GOB编码
 func EncodeToByteBuffer(obj interface{}) *bytes.Buffer {
 	var res bytes.Buffer
 	EncodeToWriter(obj, &res)
