@@ -37,6 +37,7 @@ func (dc *GobCoder) Decode(obj interface{}, reader io.Reader) {
 }
 
 func (dc *GobCoder) DecodeRequest(obj interface{}, req *http.Request) {
+	dc.Decode(obj, req.Body)
 	req.ParseForm()
 	var val reflect.Value
 	if value, ok := obj.(reflect.Value); ok {
@@ -95,8 +96,31 @@ func (jc *JsonCoder) IsReflectValueSupported() bool {
 func (jc *JsonCoder) DecodeRequest(obj interface{}, req *http.Request) {
 	jc.Decode(obj, req.Body)
 	req.ParseForm()
-	val := reflect.ValueOf(obj)
-	for k, v := range req.Form {
-		val.FieldByName(k).Set(reflect.ValueOf(v))
+	if len(req.Form) <= 0 {
+		return
 	}
+	var val reflect.Value
+	var ok bool
+	if val, ok = obj.(reflect.Value); !ok {
+		val = reflect.ValueOf(obj).Elem()
+	}
+	for k, v := range req.Form {
+		if field := val.FieldByName(k); !checkIfZeroValue(field) {
+			switch field.Kind() {
+			case reflect.Int:
+				tmp, _ := strconv.Atoi(v[0])
+				field.SetInt(int64(tmp))
+			case reflect.String:
+				field.SetString(v[0])
+			case reflect.Slice:
+			default:
+			}
+		}
+	}
+
+}
+
+//判断一个Value类型对象是否是一个zero对象
+func checkIfZeroValue(val reflect.Value) bool {
+	return val == reflect.Value{}
 }

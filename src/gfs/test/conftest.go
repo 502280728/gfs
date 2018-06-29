@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"reflect"
+
 	logging "github.com/op/go-logging"
 )
 
@@ -19,7 +21,7 @@ func (a A) String() string {
 }
 
 func hello(a A) {
-	fmt.Println(a.Name)
+
 }
 
 func main() {
@@ -45,4 +47,5 @@ func main() {
 	ff, _ := os.OpenFile("d:/temp/data/abc.txt", os.O_APPEND, os.ModeAppend)
 	defer ff.Close()
 	ff.Write([]byte("abcc"))
+	fmt.Println(reflect.Value{} != reflect.Value{})
 }
