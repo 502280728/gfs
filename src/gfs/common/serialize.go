@@ -3,6 +3,7 @@ package common
 import (
 	"bytes"
 	"encoding/gob"
+	"fmt"
 	"io"
 	"reflect"
 )
@@ -21,7 +22,8 @@ type ACK bool
 
 //由datanode每隔几秒传给master的信息，包含datanode刚刚完成存储的文件信息
 type DataNodeIntervalMessage struct {
-	Files []string //格式是 文件名全称:blockid
+	Files         []string //格式是 文件名全称:blockid
+	AdviseAddress string   //node的url，protocol://host:port
 }
 
 type MasterToClientMessage struct {
@@ -41,6 +43,10 @@ type FileBlockChip struct {
 	Offset   int64    //Data在该Block中的偏移量
 	Limit    int64    //Data的最大长度
 	Data     []byte   //该Block中对应的offset，limit的数据
+}
+
+func (fbc *FileBlockChip) String() string {
+	return fmt.Sprintf("fileName:%s, block:%d, offset:%d, limit: %d", fbc.FileName, fbc.Block, fbc.Offset, fbc.Limit)
 }
 
 func (fbc *FileBlockChip) Encode() *bytes.Buffer {

@@ -3,7 +3,6 @@ package server
 //该package主要负责接收URL请求，并分发到相应的处理器，可以认为是MVC中的C
 import (
 	"gfs/common"
-	"gfs/common/http/session"
 	"gfs/gfsmaster/fs"
 	"gfs/gfsmaster/fs/user"
 	"gfs/gfsmaster/node"
@@ -14,17 +13,8 @@ import (
 	"strconv"
 	"strings"
 
-	logging "github.com/op/go-logging"
 	"github.com/spf13/cobra"
 )
-
-var sm *session.Manager
-var logger = logging.MustGetLogger("gfs/gfsmaster/server")
-
-func init() {
-	sm = session.NewProvider(session.MAP_SESSION_PROVIDER, "")
-	sm.SessionGC()
-}
 
 func Cmd() *cobra.Command {
 	var conf string
@@ -44,8 +34,8 @@ type Server common.Conf
 
 func (svr *Server) start() {
 	//http.ListenAndServe(":8080", createFSHandler())
-	//http.ListenAndServe(":8081", createListener())
-	http.ListenAndServe(":8082", createTestListener())
+	http.ListenAndServe(":8081", createListener())
+	http.ListenAndServe(":8082", createFSHandler())
 }
 
 func createTestListener() common.Handler {
@@ -95,13 +85,47 @@ func createListener() common.Handler {
 func createFSHandler() common.Handler {
 	handler := common.Handler(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method == "POST" {
+			sess, _ := sm.SessionStart(w, req)
 			uri, _ := url.Parse(req.RequestURI)
-			if strings.HasPrefix(uri.Path, "/fs") {
-				userName := uri.Query().Get("user")
-				bb := fs.Handle(uri.Path, &user.User{Name: userName}, parseBody(req.Body))
-				w.Write(bb)
-			} else if strings.HasPrefix(uri.Path, "/file") {
+			logger.Infof("receive request with uri: %s and session id :%s", uri.Path, sess.SessionId())
+			if strings.HasPrefix(uri.Path, "/user/login") {
+				uu := map[string]string{}
+				common.DecodeFromReader(&uu, req.Body)
+				sess.Set(SessionUser, &user.User{Name: uu["name"]})
+				logger.Infof("receive request for login,with username '%s' ", uu["name"])
+				w.Write(common.EncodeToBytes(SuccessLogin))
+			} else if strings.HasPrefix(uri.Path, "/fs") {
+				if sess.Get(SessionUser) == nil {
+					w.Write(common.EncodeToBytes(InvalidSession))
+				} else {
+					bb := fs.Handle(uri.Path, sess.Get(SessionUser).(*user.User), parseBody(req.Body))
+					w.Write(bb)
+				}
+			} else if strings.HasPrefix(uri.Path, "/load") {
+				if uu := sess.Get(SessionUser); uu == nil {
+					w.Write(common.EncodeToBytes(InvalidSession))
+				} else {
+					req.ParseForm()
+					file := req.FormValue("file")
+					size, _ := strconv.ParseInt(req.FormValue("size"), 10, 64)
 
+					gfsw := fs.Load(file, size, uu.(*user.User))
+					w.Write(common.EncodeToBytes(*gfsw))
+				}
+			} else if strings.HasPrefix(uri.Path, "/get") {
+
+			} else if strings.HasPrefix(uri.Path, "/more") {
+				if uu := sess.Get(SessionUser); uu == nil {
+					w.Write(common.EncodeToBytes(InvalidSession))
+				} else {
+					req.ParseForm()
+					file := req.FormValue("file")
+					if gfsr, err := fs.Get(file, uu.(*user.User)); err == nil {
+						w.Write(common.EncodeToBytes(*gfsr))
+					} else {
+						w.Write(common.EncodeToBytes(failMessage(err)))
+					}
+				}
 			}
 		} else {
 			w.Write([]byte("仅支持POST请求"))
@@ -111,6 +135,7 @@ func createFSHandler() common.Handler {
 }
 
 func parseBody(body io.ReadCloser) string {
-	b, _ := ioutil.ReadAll(body)
-	return string(b)
+	var path string
+	common.DecodeFromReader(&path, body)
+	return path
 }

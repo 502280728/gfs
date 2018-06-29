@@ -2,11 +2,17 @@
 package session
 
 import (
+	"container/list"
 	"fmt"
 	"testing"
+	"time"
 )
 
-var sp SessionProvider = MapSessionProvider{content: make(map[string]MapSession)}
+var sp SessionProvider = &MapSessionProvider{
+	content:     make(map[string]*list.Element),
+	list:        list.New(),
+	maxLifeTime: 10000,
+}
 
 func init() {
 	fmt.Println("aaaaa")

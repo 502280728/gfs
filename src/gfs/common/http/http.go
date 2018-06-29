@@ -17,7 +17,6 @@ func (req *GFSRequest) SetCookieStore(cs cookie.CookieStore) {
 }
 
 func (req *GFSRequest) PostObj(url string, body interface{}, result interface{}) error {
-
 	return req.Post(url, nil, common.EncodeToByteBuffer(body), result)
 }
 
@@ -36,10 +35,10 @@ func (req *GFSRequest) Post(url string, headers map[string]string, body io.Reade
 		req.cs.WriteCookie(httpreq)
 	}
 	resp, err2 := http.DefaultClient.Do(httpreq)
-	defer resp.Body.Close()
 	if err2 != nil {
 		return err2
 	}
+	defer resp.Body.Close()
 	if req.cs != nil {
 		req.cs.StoreCookie(resp)
 	}

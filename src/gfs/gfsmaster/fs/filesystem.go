@@ -5,11 +5,14 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"gfs/common"
 	"gfs/gfsmaster/fs/user"
-	logging "github.com/op/go-logging"
 	"os"
+	"strconv"
 	"strings"
 	"time"
+
+	logging "github.com/op/go-logging"
 )
 
 var logger = logging.MustGetLogger("gfs/gfsmaster/fs")
@@ -23,7 +26,9 @@ type File struct {
 	CreateTime time.Time // 创建时间
 	IsDir      bool      //是否是文件夹
 	Unvisiable bool      //是否可见
-	Paths      []string  //在物理节点上的存储位置，格式是 [ip:port;id,........]
+	//Paths      []string
+	Location []*common.FileLocation //在物理节点上的存储位置，格式是 [ip:port;id,........]
+	Size     int64                  //文件大小，以字节计
 }
 
 //有些场景仅仅需要传递文件名称，该type包装这个名称
@@ -53,14 +58,17 @@ func init() {
 
 func RecoverFromStore() error {
 	if _, err := os.Stat(RootStorePath); err == nil {
-		logger.Infof("recover file system from file: %s \r\n", RootStorePath)
+		logger.Infof("recover file system from persistent file: %s \r\n , starting", RootStorePath)
 		if file, err := os.Open(RootStorePath); err == nil {
 			dec := gob.NewDecoder(file)
 			err2 := dec.Decode(&Root)
+			logger.Infof("recover file system from persistent file: %s \r\n , finished", RootStorePath)
 			return err2
 		} else {
+			logger.Errorf("error occurs when recovering fs from persistent file:%s \r\n %s", RootStorePath, err.Error())
 			return err
 		}
+
 	} else {
 		logger.Warningf("the file %s does not exist, start a empty filesystem", RootStorePath)
 		Root = Node{Name: "", NodeFile: &File{Name: "", IsDir: true, CreateTime: time.Now()}, Nodes: []*Node{RootNode}}
@@ -76,7 +84,6 @@ func StoreFileSystem() error {
 	} else {
 		return err
 	}
-
 }
 
 func (file *File) String() string {
@@ -89,6 +96,8 @@ func (file *File) String() string {
 	bb.WriteString(file.Mode.String())
 	bb.WriteByte('\t')
 	bb.WriteString(file.Owner.Name)
+	bb.WriteByte('\t')
+	bb.WriteString(strconv.FormatInt(file.Size, 10))
 	bb.WriteByte('\t')
 	bb.WriteString(file.CreateTime.Format("2006-01-02 15:04:05"))
 	bb.WriteByte('\t')
@@ -173,6 +182,10 @@ func (fn *FileName) MakeDir(user *user.User) (bool, *Node, error) {
 }
 
 func (fn *FileName) Touch(user *user.User) (bool, *Node, error) {
+	if fn.Find(user) != nil {
+		return false, nil, errors.New("该文件已经存在")
+	}
+
 	nn := string(*fn)
 	parentDir := FileName(string([]byte(nn)[0:strings.LastIndex(nn, "/")]))
 	simpleName := string([]byte(nn)[strings.LastIndex(nn, "/")+1:])
@@ -196,11 +209,10 @@ func (fn *FileName) Touch(user *user.User) (bool, *Node, error) {
 }
 
 func (fn *FileName) Remove(user *user.User) (bool, error) {
-	logger.Infof("removing file %s", string(*fn))
+	logger.Infof("removing file %s", *fn)
 	if name, err := fn.check(); err == nil {
 		names := strings.Split(name, "/")
 		if index, node, pnode := findNotExists(names); index == -1 {
-			logger.Infof("find the file in %d,%s,%s", index, node.Name, pnode.Name)
 			var tmp int
 			for i, n := range pnode.Nodes {
 				if n.Name == node.Name {
@@ -214,8 +226,19 @@ func (fn *FileName) Remove(user *user.User) (bool, error) {
 			return false, fmt.Errorf("文件%s不存在", name)
 		}
 	}
-
 	return false, nil
+}
+
+func (fn *FileName) Find(user *user.User) *File {
+	if name, err := fn.check(); err == nil {
+		names := strings.Split(name, "/")
+		if ind, node, _ := findNotExists(names); ind == -1 {
+			return node.NodeFile
+		} else {
+			return nil
+		}
+	}
+	return nil
 }
 
 func createNode(parentDir string, names []string, user *user.User) (*Node, *Node) {

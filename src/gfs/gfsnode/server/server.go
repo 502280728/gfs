@@ -3,11 +3,11 @@ package server
 import (
 	"gfs/common"
 	"gfs/gfsnode/data"
-	logging "github.com/op/go-logging"
-	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net/http"
-	"strconv"
+
+	logging "github.com/op/go-logging"
+	"github.com/spf13/cobra"
 )
 
 var logger = logging.MustGetLogger("gfs/gfsnode/server")
@@ -23,6 +23,7 @@ func Cmd() *cobra.Command {
 			if c, err := common.GetConf(conf); err == nil {
 				server := Server(*c)
 				server.start()
+
 			} else {
 				logger.Errorf("errors occurs when reading file %s", conf)
 				logger.Error(err)
@@ -39,18 +40,16 @@ func (server *Server) start() {
 	http.HandleFunc("/data/in", createDataInHandler(server))
 	http.HandleFunc("/data/out", createDataOutHandler(server))
 	http.ListenAndServe(":"+node.AdvisePort, nil)
-
 }
 
 //往datanode写入数据
 func createDataInHandler(svrConf *Server) func(w http.ResponseWriter, req *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
-		fileName := req.FormValue("file")
-		fileBlock, _ := strconv.Atoi(req.FormValue("block"))
-		if _, err := ioutil.ReadAll(req.Body); err == nil {
-			d := &data.Data{File: fileName, Block: fileBlock}
-			d.Store(&(svrConf.Node))
-		}
+		var fbc common.FileBlockChip
+		common.DecodeFromReader(&fbc, req.Body)
+		d := &data.Data{File: fbc.FileName, Block: fbc.Block}
+		logger.Infof("received param %s", fbc.String())
+		d.Store(&(svrConf.Node), fbc.Data)
 	}
 }
 
@@ -60,7 +59,7 @@ func createDataOutHandler(svrConf *Server) func(w http.ResponseWriter, req *http
 		if bb, err := ioutil.ReadAll(req.Body); err == nil {
 			var fgc = &common.FileBlockChip{}
 			fgc.Decode(bb)
-			logger.Infof("received param %s", fgc)
+			logger.Infof("received param %s", fgc.String())
 			d := &data.Data{File: fgc.FileName}
 			d.Retrieve(&(svrConf.Node), fgc)
 			w.Write(fgc.Data)

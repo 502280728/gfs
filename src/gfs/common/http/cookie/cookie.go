@@ -15,7 +15,7 @@ type GFSCookieStore struct {
 }
 
 func (cs *GFSCookieStore) StoreCookie(w *http.Response) {
-	cs.Cookies = (*w).Cookies()
+	cs.Cookies = append(cs.Cookies, w.Cookies()...)
 }
 
 func (cs *GFSCookieStore) WriteCookie(req *http.Request) {

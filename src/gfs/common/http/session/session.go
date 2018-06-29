@@ -10,6 +10,14 @@ import (
 	"github.com/satori/uuid"
 )
 
+//基本参照 https://github.com/astaxie/beego/blob/master/session/session.go 实现的
+//使用其他自定义session是实现方式的方法
+//1.自定义一个Session的实现类
+//2.自定义一个SessionProvider的实现类
+//3.使用RegisterProvider方法注册该SessionProvider
+//4.在需要使用的地方用NewProvider方法获取该SessionProvider
+//5.使用 SessionStart方法启动session
+
 // session 接口
 type Session interface {
 	Set(key, value interface{}) error
@@ -49,6 +57,7 @@ func NewProvider(providerName string, config string) *Manager {
 	if p, found := providers[providerName]; !found {
 		panic(fmt.Sprintf("Session:can not find provider with name '%s'", providerName))
 	} else {
+		p.SessionInit(config)
 		return &Manager{
 			p, config,
 		}
@@ -82,7 +91,6 @@ func (m *Manager) SessionStart(w http.ResponseWriter, req *http.Request) (Sessio
 	}
 	http.SetCookie(w, cookie)
 	req.AddCookie(cookie)
-
 	return session, nil
 }
 
@@ -97,5 +105,5 @@ func (m *Manager) SessionDestroy(w http.ResponseWriter, req *http.Request) error
 }
 func (m *Manager) SessionGC() {
 	m.provider.SessionGC()
-	time.AfterFunc(time.Duration(300)*time.Second, func() { m.provider.SessionGC() })
+	time.AfterFunc(time.Duration(300)*time.Second, func() { m.SessionGC() })
 }

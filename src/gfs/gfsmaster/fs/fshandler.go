@@ -2,7 +2,9 @@ package fs
 
 import (
 	"bytes"
+	"errors"
 	"gfs/common"
+	"gfs/common/utils"
 	"gfs/gfsmaster/fs/user"
 )
 
@@ -14,7 +16,7 @@ func Handle(path string, u *user.User, body string) []byte {
 	case "/fs/mkdir":
 		succ, _, err := fn.MakeDir(u)
 		result.Success = succ
-		if !succ {
+		if err != nil {
 			result.Msg = err.Error()
 		}
 	case "/fs/touch":
@@ -48,4 +50,28 @@ func Handle(path string, u *user.User, body string) []byte {
 	case "/fs/adduser":
 	}
 	return common.EncodeToBytes(result)
+}
+
+func Load(file string, size int64, user *user.User) *common.GFSWriter {
+	blocks := utils.Ceil(float64(size) / float64(common.BlockSize))
+	logger.Info(blocks, size)
+	fls := make([]*common.FileLocation, 0, blocks)
+	for i := 0; i < blocks; i++ {
+		fls = append(fls, &common.FileLocation{Main: "http://localhost:8087"})
+	}
+	fn := FileName(file)
+	tFile := fn.Find(user)
+	tFile.Size = size
+	tFile.Location = fls
+	return &common.GFSWriter{TargetFile: file, TargetNode: fls, MaxSize: size}
+}
+
+func Get(file string, user *user.User) (*common.GFSReader, error) {
+	fn := FileName(file)
+	tFile := fn.Find(user)
+	if tFile != nil && !tFile.Unvisiable {
+		return &common.GFSReader{TargetFile: file, TargetNode: tFile.Location, MaxSize: tFile.Size}, nil
+	} else {
+		return nil, errors.New("请等待")
+	}
 }

@@ -7,7 +7,6 @@ import (
 	"gfs/common"
 	http1 "gfs/common/http"
 	"gfs/common/http/cookie"
-	"gfs/gfsclient/cmd"
 	"net/http"
 	"net/url"
 	"os"
@@ -32,8 +31,10 @@ func Cmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use: "login",
 		Run: func(cmd *cobra.Command, args []string) {
-			logger.Infof("connecting to master : %s", master)
-			startFsCli(master, user)
+			logger.Infof("connecting to master : %s,%s,%s", master, user, pass)
+			if login(master, user, pass) {
+				startFsCli(master, user)
+			}
 		},
 	}
 	cmd.Flags().StringVarP(&master, "master", "m", "", "master的位置")
@@ -45,7 +46,7 @@ func Cmd() *cobra.Command {
 func login(master string, user string, pass string) bool {
 	uu := map[string]string{"name": user, "pass": pass}
 	var msg common.MessageInFS
-	err := REQ.PostObj(master+"/fs/login", uu, &msg)
+	err := REQ.PostObj(master+"/user/login", uu, &msg)
 	if err == nil {
 		if msg.Success {
 			logger.Info(msg.Data)
@@ -67,6 +68,7 @@ func login(master string, user string, pass string) bool {
 //  mv /a/b /c/d
 //  chmod u+a /ab/c/d
 //  chown -r root /ab/c/d
+//  load sourceFile targetFile
 func startFsCli(master string, user string) {
 	uri, _ := url.Parse(master)
 	fullPrint := fmt.Sprintf("[%s@%s] > ", user, uri.Host)
@@ -78,11 +80,13 @@ func startFsCli(master string, user string) {
 			os.Exit(0)
 		}
 		ss := strings.Split(line, " ")
-		if ss[0] != "load" {
-			cmd.MainCmd.ExecuteString(ss)
-			//sentCommand(ss[0], ss[1])
-		} else {
-
+		if ss[0] != "load" && ss[0] != "more" {
+			//cmd.MainCmd.ExecuteString(ss)
+			sentCommand(master, ss[0], ss[1])
+		} else if ss[0] == "load" {
+			sentLoadCommand(master, ss[1], ss[2])
+		} else if ss[0] == "more" {
+			sendMoreCommand(master, ss[1])
 		}
 		fmt.Print(fullPrint)
 	}
@@ -91,30 +95,52 @@ func startFsCli(master string, user string) {
 	}
 }
 
-func sentCommand(cmdLine string, path string) {
+func sentCommand(master, cmdLine, path string) {
 	var bb bytes.Buffer
 	bb.WriteString(path)
-	resp, err := http.Post("http://localhost:8080/fs/"+cmdLine, "application/octet-stream", &bb)
-	if err != nil {
-		logger.Info("error occurs")
-	}
-	defer resp.Body.Close()
 	var msg common.MessageInFS
-	common.DecodeFromReader(&msg, resp.Body)
-	if msg.Success {
-		fmt.Println(msg.Data)
+	err := REQ.PostObj(master+"/fs/"+cmdLine, path, &msg)
+	if err != nil {
+		logger.Errorf("error occurs when sending command:%s", err.Error())
 	} else {
-		fmt.Println(msg.Msg)
+		if msg.Success {
+			fmt.Println(msg.Data)
+		} else {
+			fmt.Println(msg.Msg)
+		}
 	}
 }
-func sentCommand1(cmdLine string, targetfile string, sourcefile string) {
-	//	var length int64
-	//	if fs, err := os.Stat(sourcefile); err == nil {
-	//		length = fs.Size()
-	//	}
-	//	if length%common.BlockSize == 0 {
-	//		blocks = int(length / common.BlockSize)
-	//	} else {
-	//		blocks = int(length/common.BlockSize) + 1
-	//	}
+func sentLoadCommand(master, sourcefile, targetfile string) {
+	sentCommand(master, "touch", targetfile)
+	var length int64
+	if fs, err := os.Stat(sourcefile); err == nil {
+		length = fs.Size()
+	} else {
+		logger.Error(err.Error())
+	}
+	url := fmt.Sprintf("%s/load?file=%s&size=%d", master, targetfile, length)
+	logger.Info(url)
+	var res common.GFSWriter
+	REQ.Post(url, nil, nil, &res)
+	file, _ := os.Open(sourcefile)
+	var bb = make([]byte, length, length)
+	file.Read(bb)
+	res.Write(bb)
+}
+
+func sendMoreCommand(master, file string) {
+	url := fmt.Sprintf("%s/more?file=%s", master, file)
+	var res common.GFSReader
+	REQ.Post(url, nil, nil, &res)
+	logger.Info(res)
+	var bb = make([]byte, 1500, 1500)
+
+	length, _ := res.Read(bb)
+	fmt.Print(string(bb[0:length]))
+	length, _ = res.Read(bb)
+	fmt.Print(string(bb[0:length]))
+	length, _ = res.Read(bb)
+	fmt.Print(string(bb[0:length]))
+	length, _ = res.Read(bb)
+	fmt.Print(string(bb[0:length]))
 }
