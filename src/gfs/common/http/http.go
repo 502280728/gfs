@@ -9,11 +9,11 @@ import (
 )
 
 type GFSRequest struct {
-	cs cookie.CookieStore
+	CS cookie.CookieStore
 }
 
 func (req *GFSRequest) SetCookieStore(cs cookie.CookieStore) {
-	req.cs = cs
+	req.CS = cs
 }
 
 func (req *GFSRequest) PostObj(url string, body interface{}, result interface{}) error {
@@ -31,16 +31,16 @@ func (req *GFSRequest) Post(url string, headers map[string]string, body io.Reade
 		}
 	}
 
-	if req.cs != nil {
-		req.cs.WriteCookie(httpreq)
+	if req.CS != nil {
+		req.CS.WriteCookie(httpreq)
 	}
 	resp, err2 := http.DefaultClient.Do(httpreq)
 	if err2 != nil {
 		return err2
 	}
 	defer resp.Body.Close()
-	if req.cs != nil {
-		req.cs.StoreCookie(resp)
+	if req.CS != nil {
+		req.CS.StoreCookie(resp)
 	}
 	common.DecodeFromReader(result, resp.Body)
 	return nil

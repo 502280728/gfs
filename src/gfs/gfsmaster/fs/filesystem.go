@@ -109,7 +109,6 @@ func simplifyName(name string) string {
 	if name == "." || name == ".." {
 		return name
 	} else {
-
 		return string([]byte(name)[strings.LastIndex(name, "/")+1:])
 	}
 }

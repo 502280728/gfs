@@ -7,4 +7,4 @@ import (
 
 var logger = logging.MustGetLogger("gfs/gfsnode/data")
 
-var LocalStore *FileStore
+var LocalStore *FileStore = &FileStore{}

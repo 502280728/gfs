@@ -1,15 +1,17 @@
 package common
 
 import (
+	"io/ioutil"
+
 	logging "github.com/op/go-logging"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
 )
 
 var logger = logging.MustGetLogger("gfs/common")
 
 //在datanode上每个文件块的大小，单位是字节
 var BlockSize int64 = 1024
+var BlockLength int = 10
 
 type DataNode struct {
 	DataDir      string   //datanode上文件的存储位置

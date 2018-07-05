@@ -4,7 +4,6 @@ package data
 
 import (
 	"container/list"
-	"fmt"
 	"gfs/common"
 	http1 "gfs/common/http"
 	"gfs/common/utils"
@@ -27,7 +26,7 @@ type Data struct {
 //代表datanode整个本地缓存
 type FileStore struct {
 	sync.RWMutex
-	Cache          map[string]*list.Element
+	cache          map[string]*list.Element
 	list           *list.List        //双端队列，最新写入的放到最前面
 	noticeInterval int               //每隔多久通知master，单位是秒
 	master         string            //对应的通知的master url，格式是http://host:port
@@ -44,7 +43,7 @@ func (fs *FileStore) Config(config map[string]string) {
 		if mp, f := config["masterPort"]; f {
 			p = mp
 		} else {
-			p = "8081"
+			p = "8083"
 		}
 		fs.master = mh + ":" + p
 	} else {
@@ -61,16 +60,18 @@ func (fs *FileStore) Config(config map[string]string) {
 	if ld, found := config["localDir"]; found {
 		fs.localDir = ld
 	} else {
-		fs.localDir = os.TempDir() + "/gfsnode/cache"
+		fs.localDir = "d:\\temp" + string(os.PathSeparator) + "gfsnode" + string(os.PathSeparator) + "cache"
+		//fs.localDir = os.TempDir() + "/gfsnode/cache"
 	}
 
 	if dd, found := config["dataDir"]; found {
 		fs.dataDir = dd
 	} else {
-		fs.dataDir = os.TempDir() + "/gfsnode/data"
+		fs.dataDir = "d:\\temp" + string(os.PathSeparator) + "gfsnode" + string(os.PathSeparator) + "data"
+		//fs.dataDir = os.TempDir() + "/gfsnode/data"
 	}
 	fs.config = config
-	fs.Cache = make(map[string]*list.Element)
+	fs.cache = make(map[string]*list.Element)
 	fs.list = list.New()
 	logger.Infof("datanode config, master:  %s", fs.master)
 	logger.Infof("datanode config, localDir:  %s", fs.localDir)
@@ -81,25 +82,28 @@ func (fs *FileStore) Config(config map[string]string) {
 
 //启动整个FileStore
 func (fs *FileStore) Init() {
+	logger.Info("datanode init")
 	utils.CreateDirIfNotExists(fs.localDir)
 	utils.CreateDirIfNotExists(fs.dataDir)
 	fs.NoticeMaster()
-	fs.Persistent()
+	//fs.Persistent()
 }
 
 func (fs *FileStore) persistent() {
 	fs.Lock()
+	logger.Infof("begin persist data to %s with interval %s seconds", fs.localDir, 20)
 	bb := common.EncodeToBytes(*fs)
-	if file, err := os.OpenFile(fs.localDir+"/blocks.data", os.O_TRUNC, os.ModePerm); err == nil {
+	if file, err := os.OpenFile(fs.localDir+string(os.PathSeparator)+"blocks.data", os.O_TRUNC|os.O_CREATE, os.ModePerm); err == nil {
 		file.Write(bb)
 		file.Close()
 	} else {
-		logger.Errorf("error when persist data to %s with error %s", fs.localDir, err.Error())
+		logger.Errorf("error when persist data to %s with error %d", fs.localDir, err.Error())
 	}
+	logger.Infof("end persist data to %s with interval %s seconds", fs.localDir, 20)
 	fs.Unlock()
 }
 func (fs *FileStore) Persistent() {
-	logger.Infof("persist data to %s with interval %s seconds", fs.localDir, 20)
+
 	fs.persistent()
 	time.AfterFunc(20*time.Second, func() {
 		fs.Persistent()
@@ -109,7 +113,7 @@ func (fs *FileStore) Persistent() {
 func (fs *FileStore) CheckIfExists(key string) (*Data, bool) {
 	fs.RLock()
 	defer fs.RUnlock()
-	if d, found := fs.Cache[key]; found {
+	if d, found := fs.cache[key]; found {
 		return d.Value.(*Data), true
 	} else {
 		return nil, false
@@ -120,11 +124,13 @@ func (fs *FileStore) Set(key string, data *Data) {
 	fs.Lock()
 	defer fs.Unlock()
 	ele := fs.list.PushFront(data)
-	fs.Cache[key] = ele
+	fs.cache[key] = ele
+	logger.Infof("datanode receive a block , %s,%s", key, *data)
 }
 
 func (fs *FileStore) noticeMaster() {
 	fs.Lock()
+	logger.Infof("noticing master %s ever %d seconds", fs.master, fs.noticeInterval)
 	notices := []*Data{}
 	for {
 		if ele := fs.list.Front(); ele != nil {
@@ -133,6 +139,8 @@ func (fs *FileStore) noticeMaster() {
 				if time.Now().Unix()-data.modifyTime.Unix() >= 5 {
 					notices = append(notices, data)
 				}
+				fs.list.Remove(ele)
+				notices = append(notices, data)
 			} else {
 				break
 			}
@@ -140,10 +148,17 @@ func (fs *FileStore) noticeMaster() {
 			break
 		}
 	}
-
 	var req = http1.GFSRequest{}
 	var res common.ACK
-	if err := req.PostObj(fs.master+"/node", notices, &res); err == nil {
+
+	var files = make([]string, 0, len(notices))
+	for i, n := range notices {
+		files[i] = n.File + ":" + strconv.Itoa(n.Block)
+	}
+
+	var obj = common.DataNodeIntervalMessage{Files: files}
+
+	if err := req.PostObj(fs.master+"/node", obj, &res); err == nil {
 		if res {
 			for _, n := range notices {
 				n.reported = true
@@ -152,11 +167,11 @@ func (fs *FileStore) noticeMaster() {
 	} else {
 		logger.Errorf("error when notice %s with error %s", fs.master, err.Error())
 	}
+	logger.Infof("finish to notice master,with %d to notice", len(notices))
 	fs.Unlock()
 }
 
 func (fs *FileStore) NoticeMaster() {
-	logger.Infof("noticing master %s ever %d seconds", fs.master, fs.noticeInterval)
 	fs.noticeMaster()
 	time.AfterFunc(time.Duration(int64(fs.noticeInterval)*int64(time.Second)), func() {
 		fs.NoticeMaster()

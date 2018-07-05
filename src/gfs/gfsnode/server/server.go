@@ -21,9 +21,11 @@ func Cmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			logger.Infof("start server,using conf file %s", conf)
 			if c, err := common.GetConf(conf); err == nil {
+				data.LocalStore.Config(map[string]string{"master": "http://localhost"})
+
+				data.LocalStore.Init()
 				server := Server(*c)
 				server.start()
-
 			} else {
 				logger.Errorf("errors occurs when reading file %s", conf)
 				logger.Error(err)
@@ -39,7 +41,8 @@ func (server *Server) start() {
 	logger.Infof("start server in port : %s", node.AdvisePort)
 	http.HandleFunc("/data/in", createDataInHandler(server))
 	http.HandleFunc("/data/out", createDataOutHandler(server))
-	http.ListenAndServe(":"+node.AdvisePort, nil)
+	go http.ListenAndServe(":"+node.AdvisePort, nil)
+	<-make(chan struct{})
 }
 
 //往datanode写入数据

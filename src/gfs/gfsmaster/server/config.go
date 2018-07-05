@@ -1,7 +1,7 @@
 package server
 
 import (
-	"gfs/c ommon"
+	"gfs/common"
 	"gfs/common/http/session"
 
 	logging "github.com/op/go-logging"

@@ -5,9 +5,8 @@ import (
 	"gfs/common"
 	"gfs/gfsmaster/fs"
 	"gfs/gfsmaster/fs/user"
-	"gfs/gfsmaster/node"
+	//	"gfs/gfsmaster/node"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -33,9 +32,9 @@ func Cmd() *cobra.Command {
 type Server common.Conf
 
 func (svr *Server) start() {
-	//http.ListenAndServe(":8080", createFSHandler())
-	http.ListenAndServe(":8081", createListener())
-	http.ListenAndServe(":8082", createFSHandler())
+	go http.ListenAndServe(":8083", createListener())
+	go http.ListenAndServe(":8082", createFSHandler())
+	<-make(chan struct{})
 }
 
 func createTestListener() common.Handler {
@@ -57,22 +56,24 @@ func initFileSystem() {
 
 //该handler用来处理node节点定时发送的ping信息
 func createListener() common.Handler {
-	node.DoSomework()
+	//	node.DoSomework()
 	handler := common.Handler(func(w http.ResponseWriter, req *http.Request) {
-		if req.Method == "POST" {
-			uri, _ := url.Parse(req.RequestURI)
-			if strings.HasPrefix(uri.Path, "/node") {
-				aa := req.Header.Get("AdviseAddress")
-				bb, _ := ioutil.ReadAll(req.Body)
-				res := node.HandleNodeRequest(aa, bb)
-				w.Write(res)
-			} else if strings.HasPrefix(uri.Path, "/cli/load") {
-				userName := uri.Query().Get("user")
-				blocksize, _ := strconv.Atoi(req.FormValue("blocks"))
-				res := node.HandleClientRequest(req.FormValue("filename"), blocksize, &user.User{Name: userName})
-				w.Write(res)
-			}
-		}
+		//		if req.Method == "POST" {
+		//			uri, _ := url.Parse(req.RequestURI)
+		//			if strings.HasPrefix(uri.Path, "/node") {
+		//				aa := req.Header.Get("AdviseAddress")
+		//				bb, _ := ioutil.ReadAll(req.Body)
+		//				res := node.HandleNodeRequest(aa, bb)
+		//				w.Write(res)
+		//			} else if strings.HasPrefix(uri.Path, "/cli/load") {
+		//				userName := uri.Query().Get("user")
+		//				blocksize, _ := strconv.Atoi(req.FormValue("blocks"))
+		//				res := node.HandleClientRequest(req.FormValue("filename"), blocksize, &user.User{Name: userName})
+		//				w.Write(res)
+		//			}
+		//		}
+		logger.Info("receiving notice from datanode")
+		w.Write(common.EncodeToBytes(common.ACK(true)))
 
 	})
 	return handler
