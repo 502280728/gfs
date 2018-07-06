@@ -1,9 +1,9 @@
 // http
-package http
+package ghttp
 
 import (
 	"gfs/common"
-	"gfs/common/http/cookie"
+	"gfs/common/ghttp/cookie"
 	"io"
 	"net/http"
 )

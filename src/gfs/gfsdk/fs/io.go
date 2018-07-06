@@ -4,6 +4,7 @@ package fs
 import (
 	"fmt"
 	"gfs/common"
+	"gfs/gfsdk/conf"
 )
 
 //仿照HDFS的DFSOutputStream，先将数据分块，然后启动另一个goroutine将数据库存入datanode
@@ -29,8 +30,8 @@ func NewGFSWriter(fileName string) *GFSWriter {
 		FileName: fileName,
 		buffer:   make(chan *BlockWrapper, 10),
 		currentBuffer: &BlockWrapper{
-			data:       make([]byte, 0, common.BlockLength),
-			remainSize: common.BlockLength,
+			data:       make([]byte, 0, conf.GFSContext.GetConf().BlockSize),
+			remainSize: conf.GFSContext.GetConf().BlockSize,
 		},
 	}
 	gfs.beginStreamer()
@@ -43,22 +44,22 @@ func (gfs *GFSWriter) beginStreamer() {
 			//通知master获取datanode
 			//往datanode写数据
 			fmt.Println(string(v.data))
-			GFSREQ.Post("")
 		}
 	}()
 }
 
 func (gfs *GFSWriter) Write(p []byte) (int, error) {
+	blockLength := conf.GFSContext.GetConf().BlockSize
 	if gfs.currentBuffer.remainSize >= len(p) {
 		gfs.currentBuffer.data = append(gfs.currentBuffer.data, p...)
 		gfs.totalSize = gfs.totalSize + int64(len(p))
 		gfs.currentBuffer.block = getBlockIndex(gfs.totalSize)
 		gfs.currentBuffer.fileName = gfs.FileName
-		if len(gfs.currentBuffer.data) == common.BlockLength {
+		if len(gfs.currentBuffer.data) == blockLength {
 			gfs.buffer <- gfs.currentBuffer
 		}
 	} else {
-		loop := (len(p) - gfs.currentBuffer.remainSize) / common.BlockLength
+		loop := (len(p) - gfs.currentBuffer.remainSize) / blockLength
 		locate := gfs.currentBuffer.remainSize
 		gfs.currentBuffer.data = append(gfs.currentBuffer.data, p[0:gfs.currentBuffer.remainSize]...)
 		gfs.totalSize = gfs.totalSize + int64(gfs.currentBuffer.remainSize)
@@ -66,19 +67,19 @@ func (gfs *GFSWriter) Write(p []byte) (int, error) {
 		gfs.currentBuffer.fileName = gfs.FileName
 		gfs.buffer <- gfs.currentBuffer
 		for i := 0; i <= loop; i++ {
-			begin := locate + i*common.BlockLength
-			end := begin + common.BlockLength
+			begin := locate + i*blockLength
+			end := begin + blockLength
 			if end > len(p) {
 				end = len(p)
 			}
 			gfs.currentBuffer = &BlockWrapper{
 				data:       p[begin:end],
 				fileName:   gfs.FileName,
-				remainSize: common.BlockLength - (end - begin),
+				remainSize: blockLength - (end - begin),
 			}
 			gfs.totalSize = gfs.totalSize + int64(end-begin)
-			gfs.currentBuffer.block = getBlockIndex(gfs.totalSize)
-			if len(gfs.currentBuffer.data) == common.BlockLength {
+			gfs.currentBuffer.block = getBlockIndex(gfs.totalSize,blockLength)
+			if len(gfs.currentBuffer.data) == blockLength {
 				gfs.buffer <- gfs.currentBuffer
 			}
 		}
@@ -86,18 +87,23 @@ func (gfs *GFSWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func getBlockIndex(total int64) int {
+func getBlockIndex(total int64,blockLength int) int {
+	blockLength:=
 	if int(total) == 0 {
 		return 0
-	} else if total%int64(common.BlockLength) == 0 {
-		return int(total/int64(common.BlockLength)) - 1
+	} else if total%int64(blockLength) == 0 {
+		return int(total/int64(blockLength)) - 1
 	} else {
-		return int(total / int64(common.BlockLength))
+		return int(total / int64(blockLength))
 	}
 }
 
 func (gfs *GFSWriter) Close() error {
 	gfs.buffer <- gfs.currentBuffer
 	close(gfs.buffer)
+	return nil
+}
+
+func (gfs *GFSWriter) Flush() error {
 	return nil
 }

@@ -40,5 +40,4 @@ func CreateDirIfNotExists(file string) error {
 	} else {
 		return fmt.Errorf("文件夹%s已经存在", file)
 	}
-
 }

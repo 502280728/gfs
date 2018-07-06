@@ -2,8 +2,8 @@
 package fs
 
 import (
-	http1 "gfs/common/http"
-	"gfs/common/http/cookie"
+	http1 "gfs/common/ghttp"
+	"gfs/common/ghttp/cookie"
 	"net/http"
 )
 
