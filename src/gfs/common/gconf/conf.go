@@ -21,11 +21,6 @@ import (
 //这三种配置。这里使用map作为总的配置
 type Configuration map[string]string
 
-const (
-	GFS_BLOCK_SIZE = "gfs.block.size"
-	GFS_MASTER     = "gfs.master"
-)
-
 var (
 	NO_CONF_ERROR_TEMPLATE string = "NO CONF %s FOUND!!!"
 	NOT_SUPPORT_ERROR      error  = errors.New("NOT SUPPORT ERROR")

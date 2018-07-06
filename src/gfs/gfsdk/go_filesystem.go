@@ -1,5 +1,5 @@
 // go_filesystem
-package fs
+package gfsdk
 
 import (
 	"fmt"
@@ -36,7 +36,7 @@ func (gfs *GoFileSystem) Touch(path string) (*gfs.File, error) {
 }
 
 func (gfs *GoFileSystem) Exists(path string) (bool, error) {
-	return true, nil
+	return false, nil
 }
 func (gfs *GoFileSystem) List(path string) ([]*gfs.File, error) {
 	return nil, nil
