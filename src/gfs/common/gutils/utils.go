@@ -1,9 +1,13 @@
-package utils
+package gutils
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"io"
 	"math"
 	"os"
+	"reflect"
 
 	"github.com/satori/uuid"
 )
@@ -39,5 +43,44 @@ func CreateDirIfNotExists(file string) error {
 		return os.MkdirAll(file, os.ModePerm)
 	} else {
 		return fmt.Errorf("文件夹%s已经存在", file)
+	}
+}
+
+//传对象
+func EncodeToBytes(obj interface{}) []byte {
+	return EncodeToByteBuffer(obj).Bytes()
+}
+
+//传对象,使用GOB编码
+func EncodeToByteBuffer(obj interface{}) *bytes.Buffer {
+	var res bytes.Buffer
+	EncodeToWriter(obj, &res)
+	return &res
+}
+
+func EncodeToWriter(obj interface{}, writer io.Writer) {
+	enc := gob.NewEncoder(writer)
+	enc.Encode(obj)
+}
+
+//obj 必须是地址
+func DecodeFromBytes(obj interface{}, bb []byte) {
+	var buf bytes.Buffer
+	buf.Write(bb)
+	DecodeFromByteBuffer(obj, &buf)
+}
+
+// obj必须是地址
+func DecodeFromByteBuffer(obj interface{}, bb *bytes.Buffer) {
+	DecodeFromReader(obj, bb)
+}
+
+// obj必须是地址
+func DecodeFromReader(obj interface{}, reader io.Reader) {
+	dec := gob.NewDecoder(reader)
+	if value, ok := obj.(reflect.Value); ok {
+		dec.DecodeValue(value)
+	} else {
+		dec.Decode(obj)
 	}
 }

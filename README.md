@@ -12,3 +12,5 @@ gfs/gfsnode 是gfs的datanode
 
 gfs/common中包含session与cookie的实现、文件系统FileSystem的抽象、
 一些工具、GFS的配置与读取。
+
+重新造轮子，为了系统少一点依赖，不得以自己造轮子。

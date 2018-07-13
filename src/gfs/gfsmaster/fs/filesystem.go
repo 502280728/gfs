@@ -180,6 +180,11 @@ func (fn *FileName) MakeDir(user *user.User) (bool, *Node, error) {
 	}
 }
 
+func (fn *FileName) AddFileLocation(fl *common.FileLocation, user *user.User) error {
+	file := fn.Find()
+	file.Location = append(file.Location, fl)
+}
+
 func (fn *FileName) Touch(user *user.User) (bool, *Node, error) {
 	if fn.Find(user) != nil {
 		return false, nil, errors.New("该文件已经存在")

@@ -1,5 +1,5 @@
 // utils_test.go
-package utils
+package gutils
 
 import (
 	"fmt"

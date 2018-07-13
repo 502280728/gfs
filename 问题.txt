@@ -1,0 +1,37 @@
+
+双机master方案：以系统中先启动的master为leader，后启动的为master（这仅仅是第一次启动的时候的情况）。
+任何时候，在任何情况下，只要系统中已经存在一个leader，那么就不再重新选择leader。
+因为在这里的设计中，多机master的唯一作用是备份，增加更多的master对于系统性能没有任何的作用。所以两台
+master就够了。并且也不建议多机房部署方案，所以脑裂的情况可以先不考虑。
+
+怎么判断master启动顺序：由于启动的时候是知道另一个master的部署ip的，那么会往另一个master发送请求，
+如果能够请求，那么就说明另一个master是先启动的，自己是后启动的；如果请求不同，那么就说明自己是先启动的；
+
+启动master时怎么判断该master是leader还是follower：严格按照启动顺序，第一个启动的就是leader。
+
+
+增加master的性能可是使用“根目录”的方案，及一个master负责一个根目录下所有文件的读写。
+各个master之间只要互相知道对方负责的“根”就行了。另外，对于单个根，可以使用上面的双机部署方案来进行备份。
+
+那么多个master之间怎么实现最终一致性：
+	对于写数据，其实master的工作是分配datanode，那么完全可以做到直接通知follower也执行相同的分配，在follower
+	也返回之后，再通知client(当然也可以是异步的)。这里会出现几种情况：
+	1.leader给follower发出通知后，没有收到反馈或者超时了，那么leader继续往下执行。
+	2.leader在给follower发出通知后，leader挂了，那么client端就超时了。client会往follower发请求。此时follower会变成leader。
+	3.follower挂了之后，过了一段时间又重启了。这时怎么同步数据？ 方案是在leader中有WAL，该log仅保存一段时间，如果follower能够
+	通过WAL恢复，那就通过WAL恢复；如果不能，leader还有本地存储，那么follower会直接丢弃自己过去所有的数据，直接从leader获取全量
+	数据和WAL来恢复数据。这时follower处于数据恢复状态，是不能参加选举的，这时leader再挂了，那系统就挂了。
+	
+	WAL刷新时间，由于leader和follower都有WAL，所以WAL的强制刷新频率会影响系统性能，参看redis，postgresql等等其他实现。
+	
+启动master过程：
+	1.确定自己是leader还是follower
+	2.如果是leader，读取本地的文件系统的备份文件和WAL，用于恢复文件系统
+	3.如果是follower，那就也先读取本地的文件系统的备份文件和WAL，先大体恢复了，然后询问leader还差哪些文件，并且从leader中复制这些文件。
+此时，系统处于恢复状态，不可使用。
+
+关闭master过程：
+	1.关闭leader，先确定当前是否有写的发生，如果有，等待或者报错。
+	2.关闭follower，等待当前的将本地的文件系统和WAL刷到硬盘之后关闭
+
+WAL:当系统刷自己的数据文件时，阻塞所有的操作， 先生成一个checkpoint，写入WAL，在

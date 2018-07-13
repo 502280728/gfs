@@ -58,20 +58,6 @@ func initFileSystem() {
 func createListener() common.Handler {
 	//	node.DoSomework()
 	handler := common.Handler(func(w http.ResponseWriter, req *http.Request) {
-		//		if req.Method == "POST" {
-		//			uri, _ := url.Parse(req.RequestURI)
-		//			if strings.HasPrefix(uri.Path, "/node") {
-		//				aa := req.Header.Get("AdviseAddress")
-		//				bb, _ := ioutil.ReadAll(req.Body)
-		//				res := node.HandleNodeRequest(aa, bb)
-		//				w.Write(res)
-		//			} else if strings.HasPrefix(uri.Path, "/cli/load") {
-		//				userName := uri.Query().Get("user")
-		//				blocksize, _ := strconv.Atoi(req.FormValue("blocks"))
-		//				res := node.HandleClientRequest(req.FormValue("filename"), blocksize, &user.User{Name: userName})
-		//				w.Write(res)
-		//			}
-		//		}
 		logger.Info("receiving notice from datanode")
 		w.Write(common.EncodeToBytes(common.ACK(true)))
 

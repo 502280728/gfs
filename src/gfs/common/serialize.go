@@ -32,6 +32,7 @@ type MasterToClientMessage struct {
 
 //表示某个文件块在整个文件系统中的存储位置
 type FileLocation struct {
+	Block   int      //数据块 id
 	Main    string   //主要存储节点
 	Replica []string //其他存储节点,当主节点失效后,第一个Replica自动升为主节点，以此类推
 }

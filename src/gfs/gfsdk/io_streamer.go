@@ -4,6 +4,7 @@ package gfsdk
 import (
 	"fmt"
 	"gfs/common/ghttp"
+	"gfs/common/gmsg"
 	"sync"
 )
 
@@ -31,8 +32,11 @@ func (gs *gfsStreamer) transfer() {
 
 func transfer(http ghttp.GFSRequest, v *BlockWrapper) {
 	//通知master获取datanode
+	msg := &gmsg.MsgToMaster1{Block: v.block, FileName: v.fileName}
+	var fl gmsg.MsgToSDK1
+	err := http.PostObj(gfsc.master, msg, &fl)
+
 	//往datanode写数据
-	err := http.PostObj(gfsc.master, v.data, nil)
 	logger.Error(err)
 	fmt.Println(string(v.data))
 }
