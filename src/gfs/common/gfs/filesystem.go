@@ -1,4 +1,5 @@
-// filesystem
+// 一个文件系统包括了两个子系统：
+//文件和用户
 package gfs
 
 import (
