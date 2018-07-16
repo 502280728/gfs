@@ -1,4 +1,4 @@
-package fs
+package fs_d
 
 import (
 	"bytes"

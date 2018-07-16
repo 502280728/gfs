@@ -6,13 +6,15 @@ import (
 )
 
 type User interface {
-	GetName() string        //获取用户名
-	GetPass() string        //获取密码
-	GetGroup() Group        //获取所在组
-	GetUMask() string       //获取mask,三位，与Linux一致
-	SetUMask(mask FileMask) //设置mask
+	GetName() string    //获取用户名
+	GetPass() string    //获取密码
+	GetGroup() Group    //获取所在组
+	GetUMask() FileMask //获取mask,三位，与Linux一致
 }
 type FileMask string
+
+//默认的umask
+var DefaultFileMask FileMask = "022"
 
 func (fm FileMask) GetAfterMasked() *FileAuth {
 	fa := &FileAuth{}

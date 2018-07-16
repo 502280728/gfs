@@ -14,7 +14,7 @@ import (
 type File struct {
 	Name          string    //文件的全名，末尾不包含"/"
 	Owner         User      //所有者
-	Mode          FileAuth  //权限
+	Auth          *FileAuth //权限
 	CreateTime    time.Time // 创建时间
 	ModifyTime    time.Time //修改时间
 	LastVisitTime time.Time //最后一个访问时间
@@ -25,14 +25,14 @@ type File struct {
 
 //表示一个文件系统
 type FileSystem interface {
-	Create(path string) (gio.WriteCloser, error)        //创建一个文件
-	Open(path string) (gio.ReadCloser, error)           //打开一个已经存在的文件
-	MkDir(path string) (*File, error)                   //新建文件夹
-	Touch(path string) (*File, error)                   //新建一个文件
-	Exists(paht string) (bool, error)                   //判断一个文件或者文件夹是否存在
-	List(path string) ([]*File, error)                  //获取文件夹的子文件夹/文件夹
-	GetFileInfo(path string) (*File, error)             //获取文件/文件夹详情
-	Remove(path string, recurisive bool) (*File, error) //若删除成功，error为nil，否则不为nil；FileInfo为删除文件的信息
+	Create(path string, user User) (gio.WriteCloser, error)        //创建一个文件
+	Open(path string, user User) (gio.ReadCloser, error)           //打开一个已经存在的文件
+	MkDir(path string, user User) (*File, error)                   //新建文件夹
+	Touch(path string, user User) (*File, error)                   //新建一个文件
+	Exists(paht string, user User) (bool, error)                   //判断一个文件或者文件夹是否存在
+	List(path string, user User) ([]*File, error)                  //获取文件夹的子文件夹/文件夹
+	GetFileInfo(path string, user User) (*File, error)             //获取文件/文件夹详情
+	Remove(path string, recurisive bool, user User) (*File, error) //若删除成功，error为nil，否则不为nil；FileInfo为删除文件的信息
 }
 
 func (file *File) String() string {
@@ -46,7 +46,7 @@ func (file *File) String() string {
 	} else {
 		bb.WriteString(" ")
 	}
-	bb.WriteString(file.Mode.String())
+	bb.WriteString(file.Auth.String())
 	bb.WriteByte('\t')
 	bb.WriteString(file.Owner.GetName())
 	bb.WriteByte('\t')

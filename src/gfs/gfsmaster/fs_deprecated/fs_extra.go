@@ -1,5 +1,5 @@
 // fs
-package fs
+package fs_d
 
 import (
 	"fmt"
