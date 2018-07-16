@@ -16,3 +16,7 @@ func TestCreateDirIfNotExists(t *testing.T) {
 	CreateDirIfNotExists("d:\\temp\\gfsnode\\a\\b")
 
 }
+
+func TestGetIP(t *testing.T) {
+	fmt.Println(GetLocalIP())
+}

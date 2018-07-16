@@ -52,7 +52,7 @@ func (conf Configuration) LoadProperties(confFile string) {
 				panic(err)
 			}
 			tmp := strings.TrimSpace(string(b))
-			if strings.HasPrefix(tmp, "#") {
+			if strings.HasPrefix(tmp, "#") || len(tmp) == 0 {
 				continue
 			}
 			index := strings.Index(tmp, "=")
@@ -74,6 +74,16 @@ func (conf Configuration) LoadProperties(confFile string) {
 		}
 	} else {
 		panic(err.Error())
+	}
+}
+
+func (conf Configuration) LoadConfs(confFile ...string) {
+	for _, cf := range confFile {
+		if strings.HasSuffix(cf, ".properties") {
+			conf.LoadProperties(cf)
+		} else if strings.HasSuffix(cf, ".yaml") || strings.HasSuffix(cf, ".yml") {
+			conf.LoadYaml(cf)
+		}
 	}
 }
 

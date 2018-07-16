@@ -7,6 +7,6 @@ import (
 )
 
 func TestUMask(t *testing.T) {
-	fm := FileMask("035")
+	fm := FileMask("077")
 	fmt.Println(fm.GetAfterMasked())
 }

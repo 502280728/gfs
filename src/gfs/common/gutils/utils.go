@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"os"
 	"reflect"
 
@@ -83,4 +84,21 @@ func DecodeFromReader(obj interface{}, reader io.Reader) {
 	} else {
 		dec.Decode(obj)
 	}
+}
+
+func GetLocalIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "localhost"
+	}
+	res := ""
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				res = ipnet.IP.String()
+			}
+		}
+	}
+	return res
+
 }

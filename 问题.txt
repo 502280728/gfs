@@ -22,7 +22,7 @@ master就够了。并且也不建议多机房部署方案，所以脑裂的情�
 	通过WAL恢复，那就通过WAL恢复；如果不能，leader还有本地存储，那么follower会直接丢弃自己过去所有的数据，直接从leader获取全量
 	数据和WAL来恢复数据。这时follower处于数据恢复状态，是不能参加选举的，这时leader再挂了，那系统就挂了。
 	
-	WAL刷新时间，由于leader和follower都有WAL，所以WAL的强制刷新频率会影响系统性能，参看redis，postgresql等等其他实现。
+	WAL刷新时间:由于leader和follower都有WAL，所以WAL的强制刷新频率会影响系统性能，参看redis，postgresql等等其他实现。
 	
 启动master过程：
 	1.确定自己是leader还是follower
@@ -34,4 +34,4 @@ master就够了。并且也不建议多机房部署方案，所以脑裂的情�
 	1.关闭leader，先确定当前是否有写的发生，如果有，等待或者报错。
 	2.关闭follower，等待当前的将本地的文件系统和WAL刷到硬盘之后关闭
 
-WAL:当系统刷自己的数据文件时，阻塞所有的操作， 先生成一个checkpoint，写入WAL，在
+WAL:当系统刷自己的数据文件时，阻塞所有的操作， 先生成一个checkpoint，写入WAL，
