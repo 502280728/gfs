@@ -1,0 +1,9 @@
+可以认为是common.gfs的实现
+包含了文件系统和用户系统两个子系统
+其中文件系统的实现方式是文件树;
+
+对外仅暴露一下接口：
+InitSystem() 	 					#读取一些配置
+RestoreFromLocal() 					#从本地镜像和WAL中恢复文件系统
+RestoreFromRemote()					#从远程恢复文件系统
+Start()								#启动另一gorutine定时保存image和WAL

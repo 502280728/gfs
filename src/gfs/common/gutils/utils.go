@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"time"
 
 	"github.com/satori/uuid"
 )
@@ -101,4 +102,15 @@ func GetLocalIP() string {
 	}
 	return res
 
+}
+
+const (
+	TIME_BEGIN string = "2006-01-02 15:04:05"
+)
+
+func GetNowString(pattern string) string {
+	return time.Now().Format(pattern)
+}
+func GetNowStringSimple() string {
+	return GetNowString("20060102150405")
 }

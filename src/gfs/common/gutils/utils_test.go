@@ -20,3 +20,7 @@ func TestCreateDirIfNotExists(t *testing.T) {
 func TestGetIP(t *testing.T) {
 	fmt.Println(GetLocalIP())
 }
+
+func TestGetNowString(t *testing.T) {
+	fmt.Println(GetNowStringSimple())
+}

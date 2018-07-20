@@ -1,0 +1,9 @@
+这个master节点的主package
+该package仅对外暴露下面的方法：
+LoadConfFiles(conFile ...string) 	#加载配置
+GetPeer() *Peer  					#获取节点
+GetPeerConf() *PeerConf 			#获取节点配置
+StartPeer()							#启动节点
+
+
+在使用的时候，需要建加载配置再启动节点

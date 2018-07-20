@@ -109,7 +109,25 @@ func (conf Configuration) GetOrDefault(key string, res interface{}, def interfac
 		if !ele.IsValid() || !ele.CanSet() || value.Kind() != reflect.Ptr {
 			return NOT_SUPPORT_ERROR
 		}
-		ele.Set(reflect.ValueOf(def))
+		vvv := reflect.ValueOf(def)
+		ele.Set(vvv)
+
+		switch vvv.Kind() {
+		case reflect.String:
+			conf[key] = def.(string)
+		case reflect.Int:
+			conf[key] = strconv.FormatInt(int64(def.(int)), 10)
+		case reflect.Int8:
+			conf[key] = strconv.FormatInt(int64(def.(int8)), 10)
+		case reflect.Int16:
+			conf[key] = strconv.FormatInt(int64(def.(int16)), 10)
+		case reflect.Int32:
+			conf[key] = strconv.FormatInt(int64(def.(int32)), 10)
+		case reflect.Int64:
+			conf[key] = strconv.FormatInt(def.(int64), 10)
+		default:
+		}
+
 		return nil
 	}
 }

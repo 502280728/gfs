@@ -2,11 +2,12 @@
 package main
 
 import (
-	"gfs/common/logging"
+	"gfs/gfsmaster/common"
+	"gfs/gfsmaster/fs"
 )
 
 func main() {
-	logging.Init("d:/temp/log.log", "")
-	logger := logging.GetLogger("df")
-	logger.Info("tis is ")
+	mcommon.LoadConf("d:/temp/conf/gfs.properties")
+	//	fs.StoreImage()
+	fs.RestoreFromLocal()
 }

@@ -16,6 +16,10 @@ type FileMask string
 //默认的umask
 var DefaultFileMask FileMask = "022"
 
+func DefaultFileAuth() *FileAuth {
+	return DefaultFileMask.GetAfterMasked()
+}
+
 func (fm FileMask) GetAfterMasked() *FileAuth {
 	fa := &FileAuth{}
 	tmp := string(fm)

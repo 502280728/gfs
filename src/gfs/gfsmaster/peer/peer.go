@@ -4,9 +4,15 @@ package peer
 import (
 	"gfs/common"
 	"gfs/common/ghttp"
+	"gfs/common/glog"
+	"gfs/gfsmaster/common"
+	"gfs/gfsmaster/fs"
 )
 
+var logger = glog.GetLogger("gfs/gfsmaster/peer")
+
 type PeerType uint8
+type PeerStatus int16
 
 //master的节点类型
 const (
@@ -27,23 +33,39 @@ const (
 
 type Peer struct {
 	Type   PeerType
-	Conf   *PeerConf
+	Conf   *mcommon.PeerConf
 	Status PeerStatus
 }
 
-// 核心方法,用于启动master节点
-func (peer *Peer) Start(conFile ...string) {
-	peer.loadConf(conFile...)
-	peer.restoreFileSystem()
-	peer.startServer()
+//节点对象
+var peer Peer
 
+//
+func InitPeer(confFile ...string) {
+	peer.loadConf(confFile...)
+	fs.InitSystem()
+}
+
+func GetPeer() *Peer {
+	return &peer
+}
+
+func StartPeer() {
+	peer.start()
+}
+
+// 核心方法,用于启动master节点
+func (peer *Peer) start() {
+	peer.startServer()       //在另一个goroutine上启动,能够接受外界的请求了
+	peer.restoreFileSystem() //
+	peer.startFileSystem()   //会启动filesystem需要的一些goroutine,包括定时写image，何时写WAL等等
 }
 
 //加载配置
 func (peer *Peer) loadConf(conFile ...string) {
 	peer.statusTo(Initing)
-	peer.Conf = &PeerConf{}
-	peer.Conf.LoadConfs(conFile...)
+	mcommon.LoadConf(conFile...)
+	peer.Conf = mcommon.GetPeerConf()
 	peer.checkIfLeader()
 	peer.statusTo(Inited)
 	logger.Info("master finished reading confs")
@@ -53,6 +75,10 @@ func (peer *Peer) loadConf(conFile ...string) {
 func (peer *Peer) restoreFileSystem() {
 	peer.statusTo(Restoring)
 	//TODO
+	fs.RestoreFromLocal()
+	if peer.Type == Follower {
+		fs.RestoreFromRemote()
+	}
 	peer.statusTo(Restored)
 }
 
@@ -60,6 +86,10 @@ func (peer *Peer) restoreFileSystem() {
 func (peer *Peer) startServer() {
 	//TODO
 	peer.statusTo(Working)
+}
+
+func (peer *Peer) startFileSystem() {
+	fs.Start()
 }
 
 //改变master节点的状态

@@ -1,34 +1,23 @@
-// peer_conf
-package peer
+// conf.go
+package mcommon
 
 import (
 	"gfs/common/gconf"
-	"gfs/common/gutils"
-
 	"gfs/common/glog"
+	"gfs/common/gutils"
 )
 
-var logger = glog.GetLogger("gfs/gfsmaster/peer")
+var logger = glog.GetLogger("gfs/gfsmaster/common")
 
-const (
-	GFS_MASTER_IP        = "gfs.master.ip"
-	GFS_MASTER_FRIEND_ID = "gfs.master.friend.ip"
-	GFS_MASTER_M2M_PORT  = "gfs.master.m2m.port"
-	GFS_MASTER_M2C_PORT  = "gfs.master.m2c.port"
-	GFS_MASTER_M2D_PORT  = "gfs.master.m2d.port"
+var peerConf PeerConf
 
-	GFS_MASTER_LOG        = "gfs.master.log"
-	GFS_MASTER_LOG_FILE   = "gfs.master.log.file"
-	GFS_MASTER_LOG_LEVEL  = "gfs.master.log.level"
-	GFS_MASTER_LOG_FORMAT = "gfs.master.log.format"
+func LoadConf(confFile ...string) {
+	peerConf.loadConfs(confFile...)
+}
 
-	GFS_MASTER_WAL       = "gfs.master.wal"
-	GFS_MASTER_WAL_FILE  = "gfs.master.wal.file"
-	GFS_MASTER_WAL_FSYNC = "gfs.master.wal.fsync"
-
-	GFS_MASTER_FILE          = "gfs.master.file"
-	GFS_MASTER_FILE_INTERVAL = "gfs.master.interval"
-)
+func GetPeerConf() *PeerConf {
+	return &peerConf
+}
 
 type PeerConf struct {
 	Storage *StorageConf
@@ -39,7 +28,7 @@ type PeerConf struct {
 
 //master本地文件的存储配置项
 type StorageConf struct {
-	File     string //存储位置
+	Image    string //存储位置
 	Interval int    //每隔多少秒存储一次
 }
 
@@ -68,26 +57,26 @@ type WALConf struct {
 	Fsync string //always or everysec
 }
 
-func (conf *PeerConf) LoadConfs(confFile ...string) {
+func (conf *PeerConf) loadConfs(confFile ...string) {
 	gconf.Conf.LoadConfs(confFile...)
 	conf.Log = &LogConf{}
-	conf.Log.Load()
+	conf.Log.load()
 	conf.Storage = &StorageConf{}
-	conf.Storage.Load()
+	conf.Storage.load()
 	conf.Address = &AddressConf{}
-	conf.Address.Load()
+	conf.Address.load()
 	conf.WAL = &WALConf{}
-	conf.WAL.Load()
+	conf.WAL.load()
 }
 
-func (conf *StorageConf) Load() {
-	gconf.Conf.GetOrDefault(GFS_MASTER_FILE, &conf.File, "temp/master.gob")
-	gconf.Conf.GetOrDefault(GFS_MASTER_FILE_INTERVAL, &conf.Interval, 60)
-	logger.Debugf("storage conf: file -> %s", conf.File)
+func (conf *StorageConf) load() {
+	gconf.Conf.GetOrDefault(GFS_MASTER_IMAGE, &conf.Image, "temp/master.gob")
+	gconf.Conf.GetOrDefault(GFS_MASTER_IMAGE_INTERVAL, &conf.Interval, 60)
+	logger.Debugf("storage conf: file -> %s", conf.Image)
 	logger.Debugf("storage conf: interval -> %d", conf.Interval)
 }
 
-func (conf *LogConf) Load() {
+func (conf *LogConf) load() {
 	gconf.Conf.GetOrDefault(GFS_MASTER_LOG, &conf.Log, "on")
 	gconf.Conf.GetOrDefault(GFS_MASTER_LOG_FILE, &conf.File, "temp/logs.log")
 	gconf.Conf.GetOrDefault(GFS_MASTER_LOG_LEVEL, &conf.Level, "info")
@@ -102,7 +91,7 @@ func (conf *LogConf) Load() {
 	logger.Debugf("log conf: format -> %s", conf.Format)
 }
 
-func (conf *AddressConf) Load() {
+func (conf *AddressConf) load() {
 	gconf.Conf.GetOrDefault(GFS_MASTER_IP, &conf.IP, gutils.GetLocalIP())
 	gconf.Conf.Get(GFS_MASTER_FRIEND_ID, &conf.FriendIP)
 	gconf.Conf.GetOrDefault(GFS_MASTER_M2M_PORT, &conf.M2MPort, "40001")
@@ -114,7 +103,7 @@ func (conf *AddressConf) Load() {
 	logger.Debugf("master conf: m2cport -> %s", conf.M2CPort)
 	logger.Debugf("master conf: m2dport -> %s", conf.M2DPort)
 }
-func (conf *WALConf) Load() {
+func (conf *WALConf) load() {
 	gconf.Conf.GetOrDefault(GFS_MASTER_WAL, &conf.WAL, "on")
 	gconf.Conf.GetOrDefault(GFS_MASTER_WAL_FILE, &conf.File, "temp/wal.wal")
 	gconf.Conf.GetOrDefault(GFS_MASTER_WAL_FSYNC, &conf.Fsync, "everysec")
