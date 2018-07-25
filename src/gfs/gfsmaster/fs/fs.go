@@ -3,25 +3,26 @@ package fs
 import (
 	"gfs/common"
 	"gfs/common/gfs"
-	"gfs/common/gio"
 	"gfs/common/glog"
 	"gfs/common/gutils"
 	"gfs/gfsmaster/common"
+	"gfs/gfsmaster/wal"
 	"os"
+	"strconv"
+	"sync"
 	"time"
 )
 
 type GFS struct {
+	sync.Mutex
 	FileSystem *GFileSystem
-	Users      []gfs.User
+	Users      map[string]gfs.User
 	SerialId   int
 }
 
-var wal = make(chan string, 400)
-
 var logger = glog.GetLogger("gfs/gfsmaster/fs")
 
-var users = make([]gfs.User, 0, 10)
+var users = make(map[string]gfs.User)
 var MyGFS = GFS{SerialId: 1, FileSystem: myfs, Users: users}
 
 //从gonf中读取配置
@@ -32,8 +33,24 @@ func InitSystem() {
 func RestoreFromLocal() {
 	storageConf := mcommon.GetPeerConf().Storage
 	fullName := storageConf.Image + "/image_full"
-	if file, err := os.OpenFile(fullName, os.O_RDONLY, os.ModeAppend); err == nil {
-		common.DecodeFromReader(&MyGFS, file)
+	file, err := os.OpenFile(fullName, os.O_RDONLY, os.ModeAppend)
+	if err != nil {
+		panic("fuck")
+	}
+	common.DecodeFromReader(&MyGFS, file)
+	buf := make([]*wal.WAL, 50, 50)
+	cTId := MyGFS.FileSystem.current()
+	for {
+		ind, err := wal.ReadWAL(cTId, buf)
+		if err != nil {
+			panic("fuck")
+		}
+		if ind == 0 {
+			break
+		}
+		for _, ww := range buf[0:ind] {
+			MyGFS.FileSystem.replayWAL(ww, MyGFS.Users[ww.User])
+		}
 	}
 }
 
@@ -58,19 +75,17 @@ func storeImage() {
 	os.Rename(fileName, fullName)
 	time.AfterFunc(time.Duration(interval)*time.Second, func() { storeImage() })
 }
-func storeWAL() {
-}
 
-func Create(path string, user gfs.User) (gio.WriteCloser, error) {
-	return MyGFS.FileSystem.Create(path, user)
-}
-func Open(path string, user gfs.User) (gio.ReadCloser, error) {
-	return MyGFS.FileSystem.Open(path, user)
-}
 func MkDir(path string, recurisive bool, user gfs.User) (*gfs.File, error) {
+	MyGFS.Lock()
+	defer MyGFS.Unlock()
+	wal.WriteWAL(wal.Create(MyGFS.FileSystem.next(), path, "", "r:"+strconv.FormatBool(recurisive), "", user.GetName(), wal.OP_CREATE_DIR))
 	return MyGFS.FileSystem.MkDir(path, recurisive, user)
 }
 func Touch(path string, user gfs.User) (*gfs.File, error) {
+	MyGFS.Lock()
+	defer MyGFS.Unlock()
+	wal.WriteWAL(wal.Create(MyGFS.FileSystem.next(), path, "", "", "", user.GetName(), wal.OP_CREATE_FILE))
 	return MyGFS.FileSystem.Touch(path, user)
 }
 func Exists(path string, user gfs.User) (bool, error) {
@@ -83,5 +98,8 @@ func GetFileInfo(path string, user gfs.User) (*gfs.File, error) {
 	return MyGFS.FileSystem.GetFileInfo(path, user)
 }
 func Remove(path string, recurisive bool, user gfs.User) (*gfs.File, error) {
+	MyGFS.Lock()
+	defer MyGFS.Unlock()
+	wal.WriteWAL(wal.Create(MyGFS.FileSystem.next(), path, "", "r:"+strconv.FormatBool(recurisive), "", user.GetName(), wal.OP_MV_FILE))
 	return MyGFS.FileSystem.Remove(path, recurisive, user)
 }

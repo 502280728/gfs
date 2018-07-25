@@ -2,12 +2,11 @@
 package main
 
 import (
+	"fmt"
 	"gfs/gfsmaster/common"
-	"gfs/gfsmaster/fs"
 )
 
 func main() {
 	mcommon.LoadConf("d:/temp/conf/gfs.properties")
-	//	fs.StoreImage()
-	fs.RestoreFromLocal()
+	fmt.Println("123" > "000000123")
 }

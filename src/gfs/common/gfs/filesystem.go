@@ -55,6 +55,7 @@ func (file *File) String() string {
 	bb.WriteString(file.CreateTime.Format("2006-01-02 15:04:05"))
 	bb.WriteByte('\t')
 	bb.WriteString(simplifyName(file.Name))
+	bb.WriteString("\r\n")
 	return string(bb.Bytes())
 }
 
